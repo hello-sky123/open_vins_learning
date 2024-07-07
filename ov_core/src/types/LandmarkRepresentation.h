@@ -36,12 +36,12 @@ public:
    * @brief What feature representation our state can use
    */
   enum Representation {
-    GLOBAL_3D,
-    GLOBAL_FULL_INVERSE_DEPTH,
-    ANCHORED_3D,
-    ANCHORED_FULL_INVERSE_DEPTH,
-    ANCHORED_MSCKF_INVERSE_DEPTH,
-    ANCHORED_INVERSE_DEPTH_SINGLE,
+    GLOBAL_3D,                      // 全局的[x,y,z]形式的3D landmark点表示
+    GLOBAL_FULL_INVERSE_DEPTH,      // 全局的逆深度的3D landmark点表示
+    ANCHORED_3D,                    // 锚定于某个局部坐标系的[x,y,z]形式的3D landmark点表示
+    ANCHORED_FULL_INVERSE_DEPTH,    // 锚定于某个局部坐标系逆深度形式的3D landmark点表示
+    ANCHORED_MSCKF_INVERSE_DEPTH,   // MSCKF版本的逆深度表示(多相机观测到landmark)
+    ANCHORED_INVERSE_DEPTH_SINGLE,  // 锚定单逆深度
     UNKNOWN
   };
 
@@ -71,7 +71,7 @@ public:
    * @brief Returns a string representation of this enum value.
    * Used to debug print out what the user has selected as the representation.
    * @param feat_representation String we want to find the enum of
-   * @return Representation, will be "unknown" if we coun't parse it
+   * @return Representation, will be "unknown" if we couldn't parse it
    */
   static inline Representation from_string(const std::string &feat_representation) {
     if (feat_representation == "GLOBAL_3D")

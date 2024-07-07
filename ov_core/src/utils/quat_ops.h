@@ -139,7 +139,7 @@ inline Eigen::Matrix<double, 3, 3> skew_x(const Eigen::Matrix<double, 3, 1> &w) 
 }
 
 /**
- * @brief Converts JPL quaterion to SO(3) rotation matrix
+ * @brief Converts JPL quaternion to SO(3) rotation matrix
  *
  * This is based on equation 62 in [Indirect Kalman Filter for 3D Attitude Estimation](http://mars.cs.umn.edu/tr/reports/Trawny05b.pdf):
  * \f{align*}{
@@ -179,7 +179,7 @@ inline Eigen::Matrix<double, 3, 3> quat_2_Rot(const Eigen::Matrix<double, 4, 1> 
  */
 inline Eigen::Matrix<double, 4, 1> quat_multiply(const Eigen::Matrix<double, 4, 1> &q, const Eigen::Matrix<double, 4, 1> &p) {
   Eigen::Matrix<double, 4, 1> q_t;
-  Eigen::Matrix<double, 4, 4> Qm;
+  Eigen::Matrix<double, 4, 4> Qm; // JPL约定的左乘矩阵
   // create big L matrix
   Qm.block(0, 0, 3, 3) = q(3, 0) * Eigen::MatrixXd::Identity(3, 3) - skew_x(q.block(0, 0, 3, 1));
   Qm.block(0, 3, 3, 1) = q.block(0, 0, 3, 1);
@@ -491,9 +491,10 @@ inline Eigen::Matrix<double, 4, 4> Omega(Eigen::Matrix<double, 3, 1> w) {
 /**
  * @brief Normalizes a quaternion to make sure it is unit norm
  * @param q_t Quaternion to normalized
- * @return Normalized quaterion
+ * @return Normalized quaternion
  */
 inline Eigen::Matrix<double, 4, 1> quatnorm(Eigen::Matrix<double, 4, 1> q_t) {
+  // 四元数整体变为相反数时，标示的旋转是同一个，这里保证四元数的实部大于零
   if (q_t(3, 0) < 0) {
     q_t *= -1;
   }

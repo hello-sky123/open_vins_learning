@@ -118,7 +118,7 @@ public:
     // Build perturbing quaternion
     Eigen::Matrix<double, 4, 1> dq;
     dq << .5 * dx, 1.0;
-    dq = ov_core::quatnorm(dq);
+    dq = ov_core::quatnorm(dq); // 归一化，得到单位四元数
 
     // Update estimate and recompute R
     set_value(ov_core::quat_multiply(dq, _value));
@@ -136,6 +136,7 @@ public:
    */
   void set_fej(const Eigen::MatrixXd &new_value) override { set_fej_internal(new_value); }
 
+  // Clone一个新的JPLQuat对象
   std::shared_ptr<Type> clone() override {
     auto Clone = std::shared_ptr<JPLQuat>(new JPLQuat());
     Clone->set_value(value());

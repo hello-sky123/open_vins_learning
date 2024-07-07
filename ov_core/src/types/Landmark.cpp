@@ -36,7 +36,7 @@ Eigen::Matrix<double, 3, 1> Landmark::get_xyz(bool getfej) const {
   // CASE: Anchored full inverse depth feature representation
   if (_feat_representation == LandmarkRepresentation::Representation::GLOBAL_FULL_INVERSE_DEPTH ||
       _feat_representation == LandmarkRepresentation::Representation::ANCHORED_FULL_INVERSE_DEPTH) {
-    Eigen::Matrix<double, 3, 1> p_invFinG = (getfej) ? fej() : value();
+    Eigen::Matrix<double, 3, 1> p_invFinG = (getfej) ? fej() : value(); // [theta, phi, rho]
     Eigen::Matrix<double, 3, 1> p_FinG;
     p_FinG << (1 / p_invFinG(2)) * std::cos(p_invFinG(0)) * std::sin(p_invFinG(1)),
         (1 / p_invFinG(2)) * std::sin(p_invFinG(0)) * std::sin(p_invFinG(1)), (1 / p_invFinG(2)) * std::cos(p_invFinG(1));
@@ -46,7 +46,7 @@ Eigen::Matrix<double, 3, 1> Landmark::get_xyz(bool getfej) const {
   // CASE: Anchored MSCKF inverse depth feature representation
   if (_feat_representation == LandmarkRepresentation::Representation::ANCHORED_MSCKF_INVERSE_DEPTH) {
     Eigen::Matrix<double, 3, 1> p_FinA;
-    Eigen::Matrix<double, 3, 1> p_invFinA = value();
+    Eigen::Matrix<double, 3, 1> p_invFinA = value(); // msckf版本的逆深度表示比较简单，直接是[x/z, y/z, 1/z]
     p_FinA << (1 / p_invFinA(2)) * p_invFinA(0), (1 / p_invFinA(2)) * p_invFinA(1), 1 / p_invFinA(2);
     return p_FinA;
   }
@@ -54,7 +54,7 @@ Eigen::Matrix<double, 3, 1> Landmark::get_xyz(bool getfej) const {
   // CASE: Estimate single depth of the feature using the initial bearing
   if (_feat_representation == LandmarkRepresentation::Representation::ANCHORED_INVERSE_DEPTH_SINGLE) {
     // if(getfej) return 1.0/fej()(0)*uv_norm_zero_fej;
-    return 1.0 / value()(0) * uv_norm_zero;
+    return 1.0 / value()(0) * uv_norm_zero; // 如果是ANCHORED_INVERSE_DEPTH_SINGLE，那么value()为1/z
   }
 
   // Failure
