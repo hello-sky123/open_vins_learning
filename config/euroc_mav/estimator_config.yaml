@@ -43,7 +43,7 @@ init_max_disparity: 10.0 # max disparity to consider the platform stationary (de
 init_max_features: 50 # how many features to track during initialization (saves on computation)
 
 init_dyn_use: false # if dynamic initialization should be used
-init_dyn_mle_opt_calib: false # if we should optimize calibration during intialization (not recommended)
+init_dyn_mle_opt_calib: false # if we should optimize calibration during initialization (not recommended)
 init_dyn_mle_max_iter: 50 # how many iterations the MLE refinement should use (zero to skip the MLE)
 init_dyn_mle_max_time: 0.05 # how many seconds the MLE should be completed in
 init_dyn_mle_max_threads: 6 # how many threads the MLE should use
@@ -65,7 +65,7 @@ init_dyn_bias_a: [ 0.0, 0.0, 0.0 ] # initial accelerometer bias guess
 record_timing_information: false # if we want to record timing information of the method
 record_timing_filepath: "/tmp/traj_timing.txt" # https://docs.openvins.com/eval-timing.html#eval-ov-timing-flame
 
-# if we want to save the simulation state and its diagional covariance
+# if we want to save the simulation state and its diagonal covariance
 # use this with rosrun ov_eval error_simulation
 save_total_state: false
 filepath_est: "/tmp/ov_estimate.txt"
@@ -79,7 +79,7 @@ filepath_gt: "/tmp/ov_groundtruth.txt"
 # we have a KLT and descriptor based (KLT is better implemented...)
 use_klt: true # if true we will use KLT, otherwise use a ORB descriptor + robust matching
 num_pts: 200 # number of points (per camera) we will extract and try to track
-fast_threshold: 20 # threshold for fast extraction (warning: lower threshs can be expensive)
+fast_threshold: 20 # threshold for fast extraction (warning: lower threshes can be expensive)
 grid_x: 5 # extraction sub-grid count for horizontal direction (uniform tracking)
 grid_y: 5 # extraction sub-grid count for vertical direction (uniform tracking)
 min_px_dist: 10 # distance between features (features near each other provide less information)

@@ -24,7 +24,6 @@
 
 #include "LandmarkRepresentation.h"
 #include "Vec.h"
-#include "utils/colors.h"
 #include "utils/print.h"
 
 namespace ov_type {

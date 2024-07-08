@@ -52,7 +52,7 @@ public:
     set_fej_internal(imu0);
   }
 
-  ~IMU() {}
+  ~IMU() override = default;
 
   /**
    * @brief Sets id used to track location of variable in the filter covariance

@@ -22,12 +22,14 @@
     <arg name="path_est"    default="/tmp/traj_estimate.txt" />
     <arg name="path_time"   default="/tmp/traj_timing.txt" />
 
-    <!-- if we should viz the groundtruth -->
+    <!-- if we should rviz the groundtruth -->
     <arg name="dolivetraj"  default="false" />
     <arg name="path_gt"     default="$(find ov_data)/$(arg config)/$(arg dataset).txt" />
 
     <!-- MASTER NODE! -->
 <!--    <node name="ov_msckf" pkg="ov_msckf" type="run_subscribe_msckf" output="screen" clear_params="true" required="true" launch-prefix="gdb -ex run &#45;&#45;args">-->
+<!--    可以通过launch文件修改ros::init指定的节点名称，clear_params="true"指定在节点启动之前是否清除其所有参数，required="true"：指定节点是否是启动文件所必需的。如果设置为true，并且节点由于某种原因无法启动，
+    ROS将不会启动这个启动文件中的其他节点，并报告错误-->
     <node name="ov_msckf" pkg="ov_msckf" type="run_subscribe_msckf" output="screen" clear_params="true" required="true">
 
         <!-- master configuration object -->

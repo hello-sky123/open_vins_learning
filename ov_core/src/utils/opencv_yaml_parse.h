@@ -103,7 +103,7 @@ public:
   std::string get_config_folder() { return config_path_.substr(0, config_path_.find_last_of('/')) + "/"; }
 
   /**
-   * @brief Check to see if all parameters were read succesfully
+   * @brief Check to see if all parameters were read successfully
    * @return True if we found all parameters
    */
   bool successful() const { return all_params_found_successfully; }

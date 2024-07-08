@@ -51,7 +51,7 @@ public:
     set_fej_internal(pose0);
   }
 
-  ~PoseJPL() {}
+  ~PoseJPL() override = default;
 
   /**
    * @brief Sets id used to track location of variable in the filter covariance
@@ -79,10 +79,10 @@ public:
 
     Eigen::Matrix<double, 4, 1> dq;
     dq << .5 * dx.block(0, 0, 3, 1), 1.0;
-    dq = ov_core::quatnorm(dq);
+    dq = ov_core::quatnorm(dq); // Normalize
 
     // Update orientation
-    newX.block(0, 0, 4, 1) = ov_core::quat_multiply(dq, quat());
+    newX.block(0, 0, 4, 1) = ov_core::quat_multiply(dq, quat()); // 左乘扰动量更新姿态
 
     // Update position
     newX.block(4, 0, 3, 1) += dx.block(3, 0, 3, 1);
@@ -102,6 +102,7 @@ public:
    */
   void set_fej(const Eigen::MatrixXd &new_value) override { set_fej_internal(new_value); }
 
+  // 克隆一个新的对象
   std::shared_ptr<Type> clone() override {
     auto Clone = std::shared_ptr<PoseJPL>(new PoseJPL());
     Clone->set_value(value());
