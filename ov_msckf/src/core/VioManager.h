@@ -22,14 +22,11 @@
 #ifndef OV_MSCKF_VIOMANAGER_H
 #define OV_MSCKF_VIOMANAGER_H
 
-#include <Eigen/StdVector>
-#include <algorithm>
 #include <atomic>
 #include <boost/filesystem.hpp>
 #include <fstream>
 #include <memory>
 #include <mutex>
-#include <string>
 
 #include "VioManagerOptions.h"
 
@@ -222,7 +219,7 @@ protected:
   // Startup time of the filter
   double startup_time = -1;
 
-  // Threads and their atomics
+  // Threads and their atomics 原子操作算线程安全的，因为每次对它的读写操作都是单一的、不可中断的
   std::atomic<bool> thread_init_running, thread_init_success;
 
   // If we did a zero velocity update

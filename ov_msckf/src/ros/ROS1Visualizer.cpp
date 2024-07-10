@@ -437,7 +437,7 @@ void ROS1Visualizer::visualize_final() {
 
 void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
 
-  // convert into correct format
+  // convert into correct format(自定义的IMU数据结构)
   ov_core::ImuData message;
   message.timestamp = msg->header.stamp.toSec();
   message.wm << msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z;

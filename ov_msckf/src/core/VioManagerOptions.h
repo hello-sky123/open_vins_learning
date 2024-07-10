@@ -60,8 +60,8 @@ struct VioManagerOptions {
    * @param parser If not null, this parser will be used to load our parameters
    */
   void print_and_load(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {
-    print_and_load_estimator(parser);
-    print_and_load_trackers(parser);
+    print_and_load_estimator(parser); // 配置估计器的参数
+    print_and_load_trackers(parser); // 配置光流跟踪的参数
     print_and_load_noise(parser);
 
     // needs to be called last
@@ -108,8 +108,8 @@ struct VioManagerOptions {
    */
   void print_and_load_estimator(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {
     PRINT_DEBUG("ESTIMATOR PARAMETERS:\n");
-    state_options.print(parser);
-    init_options.print_and_load(parser);
+    state_options.print(parser); // 配置状态选项
+    init_options.print_and_load(parser); // 配置初始化选项
     if (parser != nullptr) {
       parser->parse_config("dt_slam_delay", dt_slam_delay);
       parser->parse_config("try_zupt", try_zupt);

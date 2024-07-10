@@ -23,13 +23,11 @@
 
 #include "feat/Feature.h"
 #include "feat/FeatureDatabase.h"
-#include "feat/FeatureInitializer.h"
 #include "track/TrackAruco.h"
 #include "track/TrackDescriptor.h"
 #include "track/TrackKLT.h"
 #include "track/TrackSIM.h"
 #include "types/Landmark.h"
-#include "types/LandmarkRepresentation.h"
 #include "utils/opencv_lambda_body.h"
 #include "utils/print.h"
 #include "utils/sensor_data.h"
@@ -63,7 +61,7 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
 
   // This will globally set the thread count we will use
   // -1 will reset to the system default threading (usually the num of cores)
-  cv::setNumThreads(params.num_opencv_threads);
+  cv::setNumThreads(params.num_opencv_threads); // 4
   cv::setRNGSeed(0);
 
   // Create the state!!
@@ -130,6 +128,7 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   // NOTE: we will split the total number of features over all cameras uniformly
   int init_max_features = std::floor((double)params.init_options.init_max_features / (double)params.state_options.num_cameras);
   if (params.use_klt) {
+    // 初始化时最多提取50个特征点
     trackFEATS = std::shared_ptr<TrackBase>(new TrackKLT(state->_cam_intrinsics_cameras, init_max_features,
                                                          state->_options.max_aruco_features, params.use_stereo, params.histogram_method,
                                                          params.fast_threshold, params.grid_x, params.grid_y, params.min_px_dist));
@@ -146,7 +145,7 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   }
 
   // Initialize our state propagator
-  propagator = std::make_shared<Propagator>(params.imu_noises, params.gravity_mag);
+  propagator = std::make_shared<Propagator>(params.imu_noises, params.gravity_mag); // 通过IMU噪声和重力加速度初始化Propagator
 
   // Our state initialize
   initializer = std::make_shared<ov_init::InertialInitializer>(params.init_options, trackFEATS->get_feature_database());
@@ -256,7 +255,7 @@ void VioManager::feed_measurement_simulation(double timestamp, const std::vector
 void VioManager::track_image_and_update(const ov_core::CameraData &message_const) {
 
   // Start timing
-  rT1 = boost::posix_time::microsec_clock::local_time();
+  rT1 = boost::posix_time::microsec_clock::local_time(); // 获取当前时间
 
   // Assert we have valid measurement data and ids
   assert(!message_const.sensor_ids.empty());

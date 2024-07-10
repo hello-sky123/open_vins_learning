@@ -55,6 +55,7 @@ int main(int argc, char **argv) {
   // Launch our ros node
   ros::init(argc, argv, "run_subscribe_msckf");
   auto nh = std::make_shared<ros::NodeHandle>("~");
+  // 模板函数，可以不传入参数，用于获取参数服务器的参数值，可以指定默认值
   nh->param<std::string>("config_path", config_path, config_path);
 #elif ROS_AVAILABLE == 2
   // Launch our ros node
@@ -76,17 +77,17 @@ int main(int argc, char **argv) {
 
   // Verbosity
   std::string verbosity = "DEBUG";
-  parser->parse_config("verbosity", verbosity);
+  parser->parse_config("verbosity", verbosity); // 第一个参数是要解析的参数名，第二个参数存储解析出来的参数值
   ov_core::Printer::setPrintLevel(verbosity);
 
   // Create our VIO system
-  VioManagerOptions params;
-  params.print_and_load(parser);
-  params.use_multi_threading_subs = true;
+  VioManagerOptions params; // VIO的配置参数
+  params.print_and_load(parser); // 使用解析器解析配置文件，并加载到params中
+  params.use_multi_threading_subs = true; // 订阅话题的时候，是否使用多线程
   sys = std::make_shared<VioManager>(params);
 #if ROS_AVAILABLE == 1
   viz = std::make_shared<ROS1Visualizer>(nh, sys);
-  viz->setup_subscribers(parser);
+  viz->setup_subscribers(parser); // 设置订阅的topic
 #elif ROS_AVAILABLE == 2
   viz = std::make_shared<ROS2Visualizer>(node, sys);
   viz->setup_subscribers(parser);

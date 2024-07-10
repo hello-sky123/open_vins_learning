@@ -22,7 +22,7 @@
 #ifndef OV_MSCKF_NOISEMANAGER_H
 #define OV_MSCKF_NOISEMANAGER_H
 
-#include <math.h>
+#include <cmath>
 
 #include "utils/print.h"
 

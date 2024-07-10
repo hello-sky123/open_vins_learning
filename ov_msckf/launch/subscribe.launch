@@ -1,5 +1,7 @@
 <launch>
 
+<!--    在ROS中，arg标签定义的参数并不会自动加载到参数服务器，这些参数需要通过param标签或者其他显式的方式加载到参数服务器-->
+
     <!-- what config we are going to run (should match folder name) -->
     <arg name="verbosity"   default="INFO" /> <!-- ALL, DEBUG, INFO, WARNING, ERROR, SILENT -->
     <arg name="config"      default="euroc_mav" /> <!-- euroc_mav, tum_vi, rpng_aruco -->
@@ -29,7 +31,7 @@
     <!-- MASTER NODE! -->
 <!--    <node name="ov_msckf" pkg="ov_msckf" type="run_subscribe_msckf" output="screen" clear_params="true" required="true" launch-prefix="gdb -ex run &#45;&#45;args">-->
 <!--    可以通过launch文件修改ros::init指定的节点名称，clear_params="true"指定在节点启动之前是否清除其所有参数，required="true"：指定节点是否是启动文件所必需的。如果设置为true，并且节点由于某种原因无法启动，
-    ROS将不会启动这个启动文件中的其他节点，并报告错误-->
+    ROS将不会启动这个启动文件中的其他节点，并报告错误，可以通过$(arg 参数名) 的方式引用前面arg标签定义的参数-->
     <node name="ov_msckf" pkg="ov_msckf" type="run_subscribe_msckf" output="screen" clear_params="true" required="true">
 
         <!-- master configuration object -->
@@ -46,7 +48,7 @@
 
     </node>
 
-    <!-- play the dataset -->
+    <!-- play the dataset ，若条件为真，组内的节点将被启动-->
     <group if="$(arg dobag)">
         <node pkg="rosbag" type="play" name="rosbag" args="-d 1 -r $(arg bag_rate) -s $(arg bag_start) $(arg bag)" required="true"/>
     </group>

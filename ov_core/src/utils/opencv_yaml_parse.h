@@ -100,6 +100,7 @@ public:
    * @brief Will get the folder this config file is in
    * @return Config folder
    */
+  // substr提取子字符串，pos是从字符串的哪个位置开始截取，n是截取的长度，find_last_of()返回最后一个匹配的字符的位置
   std::string get_config_folder() { return config_path_.substr(0, config_path_.find_last_of('/')) + "/"; }
 
   /**
@@ -119,9 +120,11 @@ public:
    * @param node_result Resulting value (should already have default value in it)
    * @param required If this parameter is required by the user to set
    */
+  // 模板函数可以自动推导模板参数类型
   template <class T> void parse_config(const std::string &node_name, T &node_result, bool required = true) {
 
 #if ROS_AVAILABLE == 1
+    // 参数服务器的参数在这里解析
     if (nh != nullptr && nh->getParam(node_name, node_result)) {
       PRINT_INFO(GREEN "overriding node " BOLDGREEN "%s" RESET GREEN " with value from ROS!\n" RESET, node_name.c_str());
       nh->param<T>(node_name, node_result);
@@ -553,6 +556,8 @@ private:
 
     // Else lets get the one from the config
     try {
+      // root是一个cv::FileNode对象，在xml或者yaml中，根节点是最外层的元素，包含了所有的其他元素
+      // parse是一个模板函数，特化了几种常见的类型
       parse(config->root(), node_name, node_result, required);
     } catch (...) {
       PRINT_WARNING(YELLOW "unable to parse %s node of type [%s] in the config file!\n" RESET, node_name.c_str(),
@@ -563,7 +568,7 @@ private:
 
   /**
    * @brief Custom parser for the EXTERNAL parameter files with levels.
-   *
+   * imu的配置参数在另一个yaml文件，需要先根据external_node_name找到这个文件，然后根据sensor_name找到imu的配置，再根据node_name找到具体的配置项
    * This will first load the external file requested.
    * From there it will try to find the first level requested (e.g. imu0, cam0, cam1).
    * Then the requested node can be found under this sensor name.
