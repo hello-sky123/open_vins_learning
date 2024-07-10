@@ -59,6 +59,7 @@ public:
 
   /**
    * @brief Stores incoming inertial readings
+   * @brief 将传入的IMU数据存储到imu_data的std::vector中，并且剔除过老的IMU数据
    * @param message Contains our timestamp and inertial information
    * @param oldest_time Time that we can discard measurements before (in IMU clock)
    */
@@ -75,6 +76,7 @@ public:
 
   /**
    * @brief This will remove any IMU measurements that are older then the given measurement time
+   * @brief 清除早于oldest_time的IMU数据
    * @param oldest_time Time that we can discard measurements before (in IMU clock)
    */
   void clean_old_imu_measurements(double oldest_time) {
@@ -92,6 +94,7 @@ public:
 
   /**
    * @brief Will invalidate the cache used for fast propagation
+   * @brief 上一次快速传播的状态缓存无效
    */
   void invalidate_cache() { cache_imu_valid = false; }
 
@@ -127,7 +130,7 @@ public:
 
   /**
    * @brief Helper function that given current imu data, will select imu readings between the two times.
-   *
+   * 选取给定两个时间之间的IMU数据
    * This will create measurements that we will integrate with, and an extra measurement at the end.
    * We use the @ref interpolate_data() function to "cut" the imu readings at the begining and end of the integration.
    * The timestamps passed should already take into account the time offset values.
@@ -143,7 +146,7 @@ public:
 
   /**
    * @brief Nice helper function that will linearly interpolate between two imu messages.
-   *
+   * 线性插值得到两个IMU消息之间的IMU数据
    * This should be used instead of just "cutting" imu messages that bound the camera times
    * Give better time offset if we use this function, could try other orders/splines if the imu is slow.
    *

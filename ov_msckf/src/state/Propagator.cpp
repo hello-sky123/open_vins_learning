@@ -59,13 +59,13 @@ void Propagator::propagate_and_clone(std::shared_ptr<State> state, double timest
   // Get what our IMU-camera offset should be (t_imu = t_cam + calib_dt)
   double t_off_new = state->_calib_dt_CAMtoIMU->value()(0);
 
-  // First lets construct an IMU vector of measurements we need
+  // First let's construct an IMU vector of measurements we need
   double time0 = state->_timestamp + last_prop_time_offset;
   double time1 = timestamp + t_off_new;
-  std::vector<ov_core::ImuData> prop_data;
+  std::vector<ov_core::ImuData> prop_data; // 两个图像帧之间的imu数据
   {
     std::lock_guard<std::mutex> lck(imu_data_mtx);
-    prop_data = Propagator::select_imu_readings(imu_data, time0, time1);
+    prop_data = select_imu_readings(imu_data, time0, time1);
   }
 
   // We are going to sum up all the state transition matrices, so we can do a single large multiplication at the end
@@ -73,6 +73,7 @@ void Propagator::propagate_and_clone(std::shared_ptr<State> state, double timest
   // Q_summed = Phi_i*Q_summed*Phi_i^T + Q_i
   // After summing we can multiple the total phi to get the updated covariance
   // We will then add the noise to the IMU portion of the state
+  // 维度取决于要不要标imu的内参和重力，一般默认是不需要，所以维度是15
   Eigen::MatrixXd Phi_summed = Eigen::MatrixXd::Identity(state->imu_intrinsic_size() + 15, state->imu_intrinsic_size() + 15);
   Eigen::MatrixXd Qd_summed = Eigen::MatrixXd::Zero(state->imu_intrinsic_size() + 15, state->imu_intrinsic_size() + 15);
   double dt_summed = 0;
@@ -155,7 +156,7 @@ bool Propagator::fast_state_propagate(std::shared_ptr<State> state, double times
   std::vector<ov_core::ImuData> prop_data;
   {
     std::lock_guard<std::mutex> lck(imu_data_mtx);
-    prop_data = Propagator::select_imu_readings(imu_data, time0, time1, false);
+    prop_data = select_imu_readings(imu_data, time0, time1, false);
   }
   if (prop_data.size() < 2)
     return false;
@@ -288,7 +289,7 @@ std::vector<ov_core::ImuData> Propagator::select_imu_readings(const std::vector<
     // And the current is not greater then it yet...
     // Then we should "split" our current IMU measurement
     if (imu_data.at(i + 1).timestamp > time0 && imu_data.at(i).timestamp < time0) {
-      ov_core::ImuData data = Propagator::interpolate_data(imu_data.at(i), imu_data.at(i + 1), time0);
+      ov_core::ImuData data = interpolate_data(imu_data.at(i), imu_data.at(i + 1), time0);
       prop_data.push_back(data);
       // PRINT_DEBUG("propagation #%d = CASE 1 = %.3f => %.3f\n", (int)i, data.timestamp - prop_data.at(0).timestamp,
       //             time0 - prop_data.at(0).timestamp);
@@ -585,27 +586,28 @@ void Propagator::predict_mean_rk4(std::shared_ptr<State> state, double dt, const
   new_v = v_0 + (1.0 / 6.0) * k1_v + (1.0 / 3.0) * k2_v + (1.0 / 3.0) * k3_v + (1.0 / 6.0) * k4_v;
 }
 
+// 理论见https://docs.openvins.com/propagation_analytical.html#analytical_prop
 void Propagator::compute_Xi_sum(std::shared_ptr<State> state, double dt, const Eigen::Vector3d &w_hat, const Eigen::Vector3d &a_hat,
                                 Eigen::Matrix<double, 3, 18> &Xi_sum) {
 
   // Decompose our angular velocity into a direction and amount
-  double w_norm = w_hat.norm();
-  double d_th = w_norm * dt;
-  Eigen::Vector3d k_hat = Eigen::Vector3d::Zero();
+  double w_norm = w_hat.norm(); // 角速度的模
+  double d_th = w_norm * dt; // theta
+  Eigen::Vector3d k_hat = Eigen::Vector3d::Zero(); // 角速度的方向
   if (w_norm > 1e-12) {
     k_hat = w_hat / w_norm;
   }
 
   // Compute useful identities used throughout
-  Eigen::Matrix3d I_3x3 = Eigen::Matrix3d::Identity();
-  double d_t2 = std::pow(dt, 2);
-  double d_t3 = std::pow(dt, 3);
-  double w_norm2 = std::pow(w_norm, 2);
-  double w_norm3 = std::pow(w_norm, 3);
-  double cos_dth = std::cos(d_th);
-  double sin_dth = std::sin(d_th);
-  double d_th2 = std::pow(d_th, 2);
-  double d_th3 = std::pow(d_th, 3);
+  Eigen::Matrix3d I_3x3 = Eigen::Matrix3d::Identity(); // I_3x3
+  double d_t2 = std::pow(dt, 2); // delta_t^2
+  double d_t3 = std::pow(dt, 3); // delta_t_^3
+  double w_norm2 = std::pow(w_norm, 2); // w^2
+  double w_norm3 = std::pow(w_norm, 3); // w^3
+  double cos_dth = std::cos(d_th); // cos(theta)
+  double sin_dth = std::sin(d_th); // sin(theta)
+  double d_th2 = std::pow(d_th, 2); // theta^2
+  double d_th3 = std::pow(d_th, 3); // theta^3
   Eigen::Matrix3d sK = ov_core::skew_x(k_hat);
   Eigen::Matrix3d sK2 = sK * sK;
   Eigen::Matrix3d sA = ov_core::skew_x(a_hat);
@@ -613,11 +615,11 @@ void Propagator::compute_Xi_sum(std::shared_ptr<State> state, double dt, const E
   // Integration components will be used later
   Eigen::Matrix3d R_ktok1, Xi_1, Xi_2, Jr_ktok1, Xi_3, Xi_4;
   R_ktok1 = ov_core::exp_so3(-w_hat * dt);
-  Jr_ktok1 = ov_core::Jr_so3(-w_hat * dt);
+  Jr_ktok1 = ov_core::Jr_so3(-w_hat * dt); // SO(3)的右雅可比矩阵
 
   // Now begin the integration of each component
   // Based on the delta theta, let's decide which integration will be used
-  bool small_w = (w_norm < 1.0 / 180 * M_PI / 2);
+  bool small_w = w_norm < 1.0 / 180 * M_PI / 2; // 如果角度小于0.5度，则使用小角速度积分
   if (!small_w) {
 
     // first order rotation integration with constant omega

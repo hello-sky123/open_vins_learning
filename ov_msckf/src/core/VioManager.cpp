@@ -166,7 +166,7 @@ void VioManager::feed_measurement_imu(const ov_core::ImuData &message) {
 
   // The oldest time we need IMU with is the last clone
   // We shouldn't really need the whole window, but if we go backwards in time we will
-  double oldest_time = state->margtimestep();
+  double oldest_time = state->margtimestep(); // 克隆的IMU状态中，最老的那个对应的时间戳
   if (oldest_time > state->_timestamp) {
     oldest_time = -1;
   }
