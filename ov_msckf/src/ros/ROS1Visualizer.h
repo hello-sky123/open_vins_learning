@@ -144,11 +144,12 @@ protected:
   ros::Publisher pub_poseimu, pub_odomimu, pub_pathimu;
   ros::Publisher pub_points_msckf, pub_points_slam, pub_points_aruco, pub_points_sim;
   ros::Publisher pub_loop_pose, pub_loop_point, pub_loop_extrinsic, pub_loop_intrinsics;
-  std::shared_ptr<tf::TransformBroadcaster> mTfBr;
+  std::shared_ptr<tf::TransformBroadcaster> mTfBr; // 用于发布坐标变换信息
 
   // Our subscribers and camera synchronizers
   ros::Subscriber sub_imu;
   std::vector<ros::Subscriber> subs_cam;
+  // ApproximateTime同步策略允许在消息到达的时间接近的情况下进行同步，而不是要求消息完全同时到达
   typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
   std::vector<std::shared_ptr<message_filters::Synchronizer<sync_pol>>> sync_cam;
   std::vector<std::shared_ptr<message_filters::Subscriber<sensor_msgs::Image>>> sync_subs_cam;
@@ -167,9 +168,13 @@ protected:
 
   // Start and end timestamps
   bool start_time_set = false;
+  // 基于POSIX时间标准，这是一种国际标准，用于表示从1970年1月1日午夜（UTC）开始的秒数
+  // 表示精确时间点: ptime可以精确表示一个特定的时间点，精度可以达到纳秒级。
+  // 支持多种时间操作: 可以进行时间的加减操作，比较操作，格式化输出等
   boost::posix_time::ptime rT1, rT2;
 
-  // Thread atomics
+  // Thread atomics 类型的对象保证了线程安全的读写操作，无需使用额外的同步机制（如互斥锁）。
+  // 原子性：std::atomic 提供了原子性保证，即其操作是不可分割的，要么完全执行，要么完全不执行，不存在中间状态
   std::atomic<bool> thread_update_running;
 
   /// Queue up camera measurements sorted by time and trigger once we have

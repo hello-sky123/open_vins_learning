@@ -72,6 +72,8 @@ public:
    * @param line the line the print was made from
    * @param format The printf format
    */
+  // const char* str声明一个指向字符常量的指针，本身不包含关于字符串长度的信息；
+  // const char str[]声明一个字符数组，数组的大小通常由声明时的字符串长度决定，包含关于字符串长度的信息。
   static void debugPrint(PrintLevel level, const char location[], const char line[], const char *format, ...);
 
   /// The current print level
@@ -87,12 +89,13 @@ private:
 /*
  * Converts anything to a string
  */
-#define STRINGIFY(x) #x
+#define STRINGIFY(x) #x // #将宏参数转换成字符串
 #define TOSTRING(x) STRINGIFY(x)
 
 /*
  * The different Types of print levels
  */
+// x...是可变宏参数
 #define PRINT_ALL(x...) ov_core::Printer::debugPrint(ov_core::Printer::PrintLevel::ALL, __FILE__, TOSTRING(__LINE__), x);
 #define PRINT_DEBUG(x...) ov_core::Printer::debugPrint(ov_core::Printer::PrintLevel::DEBUG, __FILE__, TOSTRING(__LINE__), x);
 #define PRINT_INFO(x...) ov_core::Printer::debugPrint(ov_core::Printer::PrintLevel::INFO, __FILE__, TOSTRING(__LINE__), x);

@@ -64,12 +64,14 @@ public:
    */
   explicit YamlParser(const std::string &config_path, bool fail_if_not_found = true) : config_path_(config_path) {
 
-    // Check if file exists
+    // Check if file exists，若配置文件不存在时，不需要终止程序
     if (!fail_if_not_found && !boost::filesystem::exists(config_path)) {
-      config = nullptr;
+      config = nullptr; // 配置文件不存在，则指向cv::FileStorage的共享智能指针为空
       return;
     }
+    // 若配置文件不存在，需要终止程序
     if (!boost::filesystem::exists(config_path)) {
+      // PRINT_ERROR的整个参数都是可变宏参数x...，这里的RED和RESET是格式参数
       PRINT_ERROR(RED "unable to open the configuration file!\n%s\n" RESET, config_path.c_str());
       std::exit(EXIT_FAILURE);
     }
@@ -338,6 +340,7 @@ private:
    */
   static bool node_found(const cv::FileNode &file_node, const std::string &node_name) {
     bool found_node = false;
+    // 遍历file_node中的所有节点
     for (const auto &item : file_node) {
       if (item.name() == node_name) {
         found_node = true;
@@ -419,8 +422,8 @@ private:
       // NOTE: for example we could have "key: true #comment here..." where we only want "true"
       std::string value;
       file_node[node_name] >> value;
-      value = value.substr(0, value.find_first_of('#'));
-      value = value.substr(0, value.find_first_of(' '));
+      value = value.substr(0, value.find_first_of('#')); // 截取#之前的部分
+      value = value.substr(0, value.find_first_of(' ')); // 截取空格之前的部分
       if (value == "1" || value == "true" || value == "True" || value == "TRUE") {
         node_result = true;
       } else if (value == "0" || value == "false" || value == "False" || value == "FALSE") {

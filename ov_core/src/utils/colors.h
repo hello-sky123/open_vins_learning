@@ -24,6 +24,7 @@
 
 #define RESET "\033[0m"
 #define BLACK "\033[30m"                /* Black */
+// \033是一个转义字符，[是颜色代码的开始，m是颜色代码的结束
 #define RED "\033[31m"                  /* Red */
 #define GREEN "\033[32m"                /* Green */
 #define YELLOW "\033[33m"               /* Yellow */

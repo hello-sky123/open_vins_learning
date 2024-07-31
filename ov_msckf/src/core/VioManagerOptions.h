@@ -62,7 +62,7 @@ struct VioManagerOptions {
   void print_and_load(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {
     print_and_load_estimator(parser); // 配置估计器的参数
     print_and_load_trackers(parser); // 配置光流跟踪的参数
-    print_and_load_noise(parser);
+    print_and_load_noise(parser);  // 配置相机和IMU噪声的参数
 
     // needs to be called last
     print_and_load_state(parser);
@@ -248,7 +248,7 @@ struct VioManagerOptions {
         Eigen::VectorXd cam_calib = Eigen::VectorXd::Zero(8);
         cam_calib << cam_calib1.at(0), cam_calib1.at(1), cam_calib1.at(2), cam_calib1.at(3), cam_calib2.at(0), cam_calib2.at(1),
             cam_calib2.at(2), cam_calib2.at(3);
-        cam_calib(0) /= (downsample_cameras) ? 2.0 : 1.0;
+        cam_calib(0) /= (downsample_cameras) ? 2.0 : 1.0; // 是否对图像进行下采样
         cam_calib(1) /= (downsample_cameras) ? 2.0 : 1.0;
         cam_calib(2) /= (downsample_cameras) ? 2.0 : 1.0;
         cam_calib(3) /= (downsample_cameras) ? 2.0 : 1.0;

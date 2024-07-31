@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
   VioManagerOptions params; // VIO的配置参数
   params.print_and_load(parser); // 使用解析器解析配置文件，并加载到params中
   params.use_multi_threading_subs = true; // 订阅话题的时候，是否使用多线程
-  sys = std::make_shared<VioManager>(params);
+  sys = std::make_shared<VioManager>(params); // vio系统入口
 #if ROS_AVAILABLE == 1
   viz = std::make_shared<ROS1Visualizer>(nh, sys);
   viz->setup_subscribers(parser); // 设置订阅的topic
