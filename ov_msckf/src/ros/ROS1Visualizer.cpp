@@ -46,7 +46,7 @@ ROS1Visualizer::ROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_
 
   // Setup pose and path publisher
   pub_poseimu = nh->advertise<geometry_msgs::PoseWithCovarianceStamped>("poseimu", 2);
-  PRINT_DEBUG("Publishing: %s\n", pub_poseimu.getTopic().c_str());
+  PRINT_DEBUG("Publishing: %s\n", pub_poseimu.getTopic().c_str()); // 打印要发布的话题名称
   pub_odomimu = nh->advertise<nav_msgs::Odometry>("odomimu", 2);
   PRINT_DEBUG("Publishing: %s\n", pub_odomimu.getTopic().c_str());
   pub_pathimu = nh->advertise<nav_msgs::Path>("pathimu", 2);
@@ -90,6 +90,7 @@ ROS1Visualizer::ROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_
     std::string path_to_gt;
     nh->param<std::string>("path_gt", path_to_gt, "");
     if (!path_to_gt.empty()) {
+      // 如果有groundtruth文件，则加载真值
       DatasetReader::load_gt_file(path_to_gt, gt_states);
       PRINT_DEBUG("gt file path is: %s\n", path_to_gt.c_str());
     }
@@ -112,7 +113,7 @@ ROS1Visualizer::ROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_
     if (boost::filesystem::exists(filepath_std))
       boost::filesystem::remove(filepath_std);
 
-    // Create folder path to this location if not exists
+    // Create folder path to this location if not exists，创建保存的文件夹
     boost::filesystem::create_directories(boost::filesystem::path(filepath_est.c_str()).parent_path());
     boost::filesystem::create_directories(boost::filesystem::path(filepath_std.c_str()).parent_path());
 
@@ -136,18 +137,20 @@ ROS1Visualizer::ROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_
   }
 
   // Start thread for the image publishing
+  // 通过传入函数或者可调用对象来创建线程，这里传入的是lambda表达式，引用捕获所有的外部作用域中的变量
   if (_app->get_params().use_multi_threading_pubs) {
     std::thread thread([&] {
-      ros::Rate loop_rate(20);
+      ros::Rate loop_rate(20); // 设置图像的发布频率为20Hz
       while (ros::ok()) {
-        publish_images();
+        publish_images(); // 每次循环时，调用publish_images函数发布图像，使线程休眠适当的时间以保持20hz的频率
         loop_rate.sleep();
       }
     });
-    thread.detach();
+    thread.detach(); // 将线程与创建它的线程分离，使得该线程在后台独立运行
   }
 }
 
+// 设置订阅者，订阅IMU和相机数据
 void ROS1Visualizer::setup_subscribers(std::shared_ptr<ov_core::YamlParser> parser) {
 
   // We need a valid parser
@@ -187,7 +190,7 @@ void ROS1Visualizer::setup_subscribers(std::shared_ptr<ov_core::YamlParser> pars
       std::string cam_topic;
       _nh->param<std::string>("topic_camera" + std::to_string(i), cam_topic, "/cam" + std::to_string(i) + "/image_raw");
       parser->parse_external("relative_config_imucam", "cam" + std::to_string(i), "rostopic", cam_topic);
-      // create subscriber
+      // create subscriber，boost：：bind可以绑定一个或者多个参数，_1是占位符，表示第一个参数，第二个参数直接绑定为i
       subs_cam.push_back(_nh->subscribe<sensor_msgs::Image>(cam_topic, 10, boost::bind(&ROS1Visualizer::callback_monocular, this, _1, i)));
       PRINT_INFO("subscribing to cam (mono): %s\n", cam_topic.c_str());
     }
@@ -242,6 +245,7 @@ void ROS1Visualizer::visualize() {
   // PRINT_DEBUG(BLUE "[TIME]: %.4f seconds for visualization\n" RESET, time_total);
 }
 
+// 可视化IMU递推的里程计数据
 void ROS1Visualizer::visualize_odometry(double timestamp) {
 
   // Return if we have not inited
@@ -435,6 +439,7 @@ void ROS1Visualizer::visualize_final() {
   PRINT_INFO(REDPURPLE "TIME: %.3f seconds\n\n" RESET, (rT2 - rT1).total_microseconds() * 1e-6);
 }
 
+// 处理订阅的IMU数据
 void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
 
   // convert into correct format(自定义的IMU数据结构)
@@ -450,14 +455,17 @@ void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
   // If the processing queue is currently active / running just return so we can keep getting measurements
   // Otherwise create a second thread to do our update in an async manor
   // The visualization of the state, images, and features will be synchronous with the update!
+  // thread_update_running表示图像队列是否正在处理
   if (thread_update_running)
     return;
   thread_update_running = true;
+  // 开启一个新的线程来处理图像队列
   std::thread thread([&] {
     // Lock on the queue (prevents new images from appending)
-    std::lock_guard<std::mutex> lck(camera_queue_mtx);
+    std::lock_guard<std::mutex> lck(camera_queue_mtx); // 加锁，防止新图像加入队列
 
     // Count how many unique image streams
+    // 遍历图像队列，统计不同相机ID的数量
     std::map<int, bool> unique_cam_ids;
     for (const auto &cam_msg : camera_queue) {
       unique_cam_ids[cam_msg.sensor_ids.at(0)] = true;
@@ -499,7 +507,8 @@ void ROS1Visualizer::callback_monocular(const sensor_msgs::ImageConstPtr &msg0, 
 
   // Check if we should drop this image
   double timestamp = msg0->header.stamp.toSec();
-  double time_delta = 1.0 / _app->get_params().track_frequency;
+  double time_delta = 1.0 / _app->get_params().track_frequency; // euroc: 21
+  // camera_last_timestamp保存了每个相机上一帧的时间戳，如果当前帧的时间戳距离上一帧过近，则丢弃
   if (camera_last_timestamp.find(cam_id0) != camera_last_timestamp.end() && timestamp < camera_last_timestamp.at(cam_id0) + time_delta) {
     return;
   }
@@ -508,6 +517,7 @@ void ROS1Visualizer::callback_monocular(const sensor_msgs::ImageConstPtr &msg0, 
   // Get the image
   cv_bridge::CvImageConstPtr cv_ptr;
   try {
+    // 如果编码格式相同，则共享图像数据，CvImage包含header、encoding和image三个成员
     cv_ptr = cv_bridge::toCvShare(msg0, sensor_msgs::image_encodings::MONO8);
   } catch (cv_bridge::Exception &e) {
     PRINT_ERROR("cv_bridge exception: %s", e.what());
@@ -517,10 +527,11 @@ void ROS1Visualizer::callback_monocular(const sensor_msgs::ImageConstPtr &msg0, 
   // Create the measurement
   ov_core::CameraData message;
   message.timestamp = cv_ptr->header.stamp.toSec();
-  message.sensor_ids.push_back(cam_id0);
-  message.images.push_back(cv_ptr->image.clone());
+  message.sensor_ids.push_back(cam_id0); // 每一个图像数据对应一个相机id
+  message.images.push_back(cv_ptr->image.clone()); // 拷贝图像数据，避免图像消息指针失效
 
   // Load the mask if we are using it, else it is empty
+  // 每个图像对应一个mask，如果使用mask，则加载mask，否则为空mask
   // TODO: in the future we should get this from external pixel segmentation
   if (_app->get_params().use_mask) {
     message.masks.push_back(_app->get_params().masks.at(cam_id0));
@@ -530,8 +541,8 @@ void ROS1Visualizer::callback_monocular(const sensor_msgs::ImageConstPtr &msg0, 
 
   // append it to our queue of images
   std::lock_guard<std::mutex> lck(camera_queue_mtx);
-  camera_queue.push_back(message);
-  std::sort(camera_queue.begin(), camera_queue.end());
+  camera_queue.push_back(message); // 将新来的图像数据添加到队列中
+  std::sort(camera_queue.begin(), camera_queue.end()); // 对队列中的图像数据按时间戳排序
 }
 
 void ROS1Visualizer::callback_stereo(const sensor_msgs::ImageConstPtr &msg0, const sensor_msgs::ImageConstPtr &msg1, int cam_id0,

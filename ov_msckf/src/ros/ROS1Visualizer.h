@@ -173,8 +173,8 @@ protected:
   // 支持多种时间操作: 可以进行时间的加减操作，比较操作，格式化输出等
   boost::posix_time::ptime rT1, rT2;
 
-  // Thread atomics 类型的对象保证了线程安全的读写操作，无需使用额外的同步机制（如互斥锁）。
-  // 原子性：std::atomic 提供了原子性保证，即其操作是不可分割的，要么完全执行，要么完全不执行，不存在中间状态
+  // Thread atomics 线程安全：原子类型的对象保证了线程安全的读写操作，无需使用额外的同步机制（如互斥锁）。
+  // 原子性：std::atomic提供了原子性保证，即其操作是不可分割的，要么完全执行，要么完全不执行，不存在中间状态
   std::atomic<bool> thread_update_running;
 
   /// Queue up camera measurements sorted by time and trigger once we have

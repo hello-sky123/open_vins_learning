@@ -69,7 +69,7 @@ public:
     std::string line;
     file.open(path);
 
-    // Check that it was successfull
+    // Check that it was successful
     if (!file) {
       PRINT_ERROR(RED "ERROR: Unable to open groundtruth file...\n" RESET);
       PRINT_ERROR(RED "ERROR: %s\n" RESET, path.c_str());
@@ -77,13 +77,13 @@ public:
     }
 
     // Skip the first line as it is just the header
-    std::getline(file, line);
+    std::getline(file, line); // 文件指针会移动到下一行
 
     // Loop through each line in the file
     while (std::getline(file, line)) {
       // Loop variables
       int i = 0;
-      std::istringstream s(line);
+      std::istringstream s(line); // 将字符串line转换为字符串流s，方便逐个读取
       std::string field;
       Eigen::Matrix<double, 17, 1> temp = Eigen::Matrix<double, 17, 1>::Zero();
       // Loop through this line
@@ -98,7 +98,7 @@ public:
         temp(i, 0) = std::atof(field.c_str());
         i++;
       }
-      // Append to our groundtruth map
+      // Append to our groundtruth map，将时间戳（纳秒换算为秒）作为键，将状态作为值
       gt_states.insert({1e-9 * temp(0, 0), temp});
     }
     file.close();
