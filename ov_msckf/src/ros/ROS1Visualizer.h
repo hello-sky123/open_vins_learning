@@ -80,7 +80,7 @@ public:
    * @param app Core estimator manager
    * @param sim Simulator if we are simulating
    */
-  ROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_ptr<VioManager> app, std::shared_ptr<Simulator> sim = nullptr);
+  ROS1Visualizer(const std::shared_ptr<ros::NodeHandle>& nh, std::shared_ptr<VioManager> app, std::shared_ptr<Simulator> sim = nullptr);
 
   /**
    * @brief Will setup ROS subscribers and callbacks
@@ -158,7 +158,7 @@ protected:
   unsigned int poses_seq_imu = 0;
   std::vector<geometry_msgs::PoseStamped> poses_imu;
 
-  // Groundtruth infomation
+  // Groundtruth information
   ros::Publisher pub_pathgt, pub_posegt;
   double summed_mse_ori = 0.0;
   double summed_mse_pos = 0.0;

@@ -21,6 +21,8 @@
 
 #include "ROS1Visualizer.h"
 
+#include <utility>
+
 #include "core/VioManager.h"
 #include "ros/ROSVisualizerHelper.h"
 #include "sim/Simulator.h"
@@ -35,8 +37,8 @@ using namespace ov_core;
 using namespace ov_type;
 using namespace ov_msckf;
 
-ROS1Visualizer::ROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_ptr<VioManager> app, std::shared_ptr<Simulator> sim)
-    : _nh(nh), _app(app), _sim(sim), thread_update_running(false) {
+ROS1Visualizer::ROS1Visualizer(const std::shared_ptr<ros::NodeHandle> &nh, std::shared_ptr<VioManager> app, std::shared_ptr<Simulator> sim)
+    : _nh(nh), _app(std::move(app)), _sim(std::move(sim)), thread_update_running(false) {
 
   // Setup our transform broadcaster
   mTfBr = std::make_shared<tf::TransformBroadcaster>();
@@ -46,31 +48,31 @@ ROS1Visualizer::ROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_
 
   // Setup pose and path publisher
   pub_poseimu = nh->advertise<geometry_msgs::PoseWithCovarianceStamped>("poseimu", 2);
-  PRINT_DEBUG("Publishing: %s\n", pub_poseimu.getTopic().c_str()); // 打印要发布的话题名称
+  PRINT_DEBUG("Publishing: %s\n", pub_poseimu.getTopic().c_str()) // 打印要发布的话题名称
   pub_odomimu = nh->advertise<nav_msgs::Odometry>("odomimu", 2);
-  PRINT_DEBUG("Publishing: %s\n", pub_odomimu.getTopic().c_str());
+  PRINT_DEBUG("Publishing: %s\n", pub_odomimu.getTopic().c_str())
   pub_pathimu = nh->advertise<nav_msgs::Path>("pathimu", 2);
-  PRINT_DEBUG("Publishing: %s\n", pub_pathimu.getTopic().c_str());
+  PRINT_DEBUG("Publishing: %s\n", pub_pathimu.getTopic().c_str())
 
   // 3D points publishing
   pub_points_msckf = nh->advertise<sensor_msgs::PointCloud2>("points_msckf", 2);
-  PRINT_DEBUG("Publishing: %s\n", pub_points_msckf.getTopic().c_str());
+  PRINT_DEBUG("Publishing: %s\n", pub_points_msckf.getTopic().c_str())
   pub_points_slam = nh->advertise<sensor_msgs::PointCloud2>("points_slam", 2);
-  PRINT_DEBUG("Publishing: %s\n", pub_points_msckf.getTopic().c_str());
+  PRINT_DEBUG("Publishing: %s\n", pub_points_msckf.getTopic().c_str())
   pub_points_aruco = nh->advertise<sensor_msgs::PointCloud2>("points_aruco", 2);
-  PRINT_DEBUG("Publishing: %s\n", pub_points_aruco.getTopic().c_str());
+  PRINT_DEBUG("Publishing: %s\n", pub_points_aruco.getTopic().c_str())
   pub_points_sim = nh->advertise<sensor_msgs::PointCloud2>("points_sim", 2);
-  PRINT_DEBUG("Publishing: %s\n", pub_points_sim.getTopic().c_str());
+  PRINT_DEBUG("Publishing: %s\n", pub_points_sim.getTopic().c_str())
 
   // Our tracking image
   it_pub_tracks = it.advertise("trackhist", 2);
-  PRINT_DEBUG("Publishing: %s\n", it_pub_tracks.getTopic().c_str());
+  PRINT_DEBUG("Publishing: %s\n", it_pub_tracks.getTopic().c_str())
 
   // Groundtruth publishers
   pub_posegt = nh->advertise<geometry_msgs::PoseStamped>("posegt", 2);
-  PRINT_DEBUG("Publishing: %s\n", pub_posegt.getTopic().c_str());
+  PRINT_DEBUG("Publishing: %s\n", pub_posegt.getTopic().c_str())
   pub_pathgt = nh->advertise<nav_msgs::Path>("pathgt", 2);
-  PRINT_DEBUG("Publishing: %s\n", pub_pathgt.getTopic().c_str());
+  PRINT_DEBUG("Publishing: %s\n", pub_pathgt.getTopic().c_str())
 
   // Loop closure publishers
   pub_loop_pose = nh->advertise<nav_msgs::Odometry>("loop_pose", 2);
@@ -92,7 +94,7 @@ ROS1Visualizer::ROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_
     if (!path_to_gt.empty()) {
       // 如果有groundtruth文件，则加载真值
       DatasetReader::load_gt_file(path_to_gt, gt_states);
-      PRINT_DEBUG("gt file path is: %s\n", path_to_gt.c_str());
+      PRINT_DEBUG("gt file path is: %s\n", path_to_gt.c_str())
     }
   }
 
@@ -161,7 +163,7 @@ void ROS1Visualizer::setup_subscribers(std::shared_ptr<ov_core::YamlParser> pars
   _nh->param<std::string>("topic_imu", topic_imu, "/imu0");
   parser->parse_external("relative_config_imu", "imu0", "rostopic", topic_imu);
   sub_imu = _nh->subscribe(topic_imu, 1000, &ROS1Visualizer::callback_inertial, this);
-  PRINT_INFO("subscribing to IMU: %s\n", topic_imu.c_str());
+  PRINT_INFO("subscribing to IMU: %s\n", topic_imu.c_str())
 
   // Logic for sync stereo subscriber
   // https://answers.ros.org/question/96346/subscribe-to-two-image_raws-with-one-function/?answer=96491#post-id-96491
@@ -173,16 +175,18 @@ void ROS1Visualizer::setup_subscribers(std::shared_ptr<ov_core::YamlParser> pars
     parser->parse_external("relative_config_imucam", "cam" + std::to_string(0), "rostopic", cam_topic0);
     parser->parse_external("relative_config_imucam", "cam" + std::to_string(1), "rostopic", cam_topic1);
     // Create sync filter (they have unique pointers internally, so we have to use move logic here...)
+    // message_filters::Subscriber用于同步来自多个订阅者的消息
     auto image_sub0 = std::make_shared<message_filters::Subscriber<sensor_msgs::Image>>(*_nh, cam_topic0, 1);
     auto image_sub1 = std::make_shared<message_filters::Subscriber<sensor_msgs::Image>>(*_nh, cam_topic1, 1);
+    // 近似时间同步策略，同步窗口为10，找到时间同步的消息后，会调用回调函数
     auto sync = std::make_shared<message_filters::Synchronizer<sync_pol>>(sync_pol(10), *image_sub0, *image_sub1);
     sync->registerCallback(boost::bind(&ROS1Visualizer::callback_stereo, this, _1, _2, 0, 1));
     // Append to our vector of subscribers
     sync_cam.push_back(sync);
     sync_subs_cam.push_back(image_sub0);
     sync_subs_cam.push_back(image_sub1);
-    PRINT_INFO("subscribing to cam (stereo): %s\n", cam_topic0.c_str());
-    PRINT_INFO("subscribing to cam (stereo): %s\n", cam_topic1.c_str());
+    PRINT_INFO("subscribing to cam (stereo): %s\n", cam_topic0.c_str())
+    PRINT_INFO("subscribing to cam (stereo): %s\n", cam_topic1.c_str())
   } else {
     // Now we should add any non-stereo callbacks here
     for (int i = 0; i < _app->get_params().state_options.num_cameras; i++) {
@@ -192,7 +196,7 @@ void ROS1Visualizer::setup_subscribers(std::shared_ptr<ov_core::YamlParser> pars
       parser->parse_external("relative_config_imucam", "cam" + std::to_string(i), "rostopic", cam_topic);
       // create subscriber，boost：：bind可以绑定一个或者多个参数，_1是占位符，表示第一个参数，第二个参数直接绑定为i
       subs_cam.push_back(_nh->subscribe<sensor_msgs::Image>(cam_topic, 10, boost::bind(&ROS1Visualizer::callback_monocular, this, _1, i)));
-      PRINT_INFO("subscribing to cam (mono): %s\n", cam_topic.c_str());
+      PRINT_INFO("subscribing to cam (mono): %s\n", cam_topic.c_str())
     }
   }
 }
@@ -254,12 +258,13 @@ void ROS1Visualizer::visualize_odometry(double timestamp) {
 
   // Get fast propagate state at the desired timestamp
   std::shared_ptr<State> state = _app->get_state();
+  // q, p, v
   Eigen::Matrix<double, 13, 1> state_plus = Eigen::Matrix<double, 13, 1>::Zero();
   Eigen::Matrix<double, 12, 12> cov_plus = Eigen::Matrix<double, 12, 12>::Zero();
   if (!_app->get_propagator()->fast_state_propagate(state, timestamp, state_plus, cov_plus))
     return;
 
-  //  // Get the simulated groundtruth so we can evaulate the error in respect to it
+  //  // Get the simulated groundtruth so we can evaluate the error in respect to it
   //  // NOTE: we get the true time in the IMU clock frame
   //  if (_sim != nullptr) {
   //    Eigen::Matrix<double, 17, 1> state_gt;
@@ -287,6 +292,7 @@ void ROS1Visualizer::visualize_odometry(double timestamp) {
   //  }
 
   // Publish our odometry message if requested
+  // 检查是否有订阅者
   if (pub_odomimu.getNumSubscribers() != 0) {
 
     nav_msgs::Odometry odomIinM;
@@ -357,16 +363,16 @@ void ROS1Visualizer::visualize_final() {
 
   // Final time offset value
   if (_app->get_state()->_options.do_calib_camera_timeoffset) {
-    PRINT_INFO(REDPURPLE "camera-imu timeoffset = %.5f\n\n" RESET, _app->get_state()->_calib_dt_CAMtoIMU->value()(0));
+    PRINT_INFO(REDPURPLE "camera-imu timeoffset = %.5f\n\n" RESET, _app->get_state()->_calib_dt_CAMtoIMU->value()(0))
   }
 
   // Final camera intrinsics
   if (_app->get_state()->_options.do_calib_camera_intrinsics) {
     for (int i = 0; i < _app->get_state()->_options.num_cameras; i++) {
       std::shared_ptr<Vec> calib = _app->get_state()->_cam_intrinsics.at(i);
-      PRINT_INFO(REDPURPLE "cam%d intrinsics:\n" RESET, (int)i);
-      PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f\n" RESET, calib->value()(0), calib->value()(1), calib->value()(2), calib->value()(3));
-      PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,%.5f\n\n" RESET, calib->value()(4), calib->value()(5), calib->value()(6), calib->value()(7));
+      PRINT_INFO(REDPURPLE "cam%d intrinsics:\n" RESET, (int)i)
+      PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f\n" RESET, calib->value()(0), calib->value()(1), calib->value()(2), calib->value()(3))
+      PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,%.5f\n\n" RESET, calib->value()(4), calib->value()(5), calib->value()(6), calib->value()(7))
     }
   }
 
@@ -377,11 +383,11 @@ void ROS1Visualizer::visualize_final() {
       Eigen::Matrix4d T_CtoI = Eigen::Matrix4d::Identity();
       T_CtoI.block(0, 0, 3, 3) = quat_2_Rot(calib->quat()).transpose();
       T_CtoI.block(0, 3, 3, 1) = -T_CtoI.block(0, 0, 3, 3) * calib->pos();
-      PRINT_INFO(REDPURPLE "T_C%dtoI:\n" RESET, i);
-      PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f,\n" RESET, T_CtoI(0, 0), T_CtoI(0, 1), T_CtoI(0, 2), T_CtoI(0, 3));
-      PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f,\n" RESET, T_CtoI(1, 0), T_CtoI(1, 1), T_CtoI(1, 2), T_CtoI(1, 3));
-      PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f,\n" RESET, T_CtoI(2, 0), T_CtoI(2, 1), T_CtoI(2, 2), T_CtoI(2, 3));
-      PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f\n\n" RESET, T_CtoI(3, 0), T_CtoI(3, 1), T_CtoI(3, 2), T_CtoI(3, 3));
+      PRINT_INFO(REDPURPLE "T_C%dtoI:\n" RESET, i)
+      PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f,\n" RESET, T_CtoI(0, 0), T_CtoI(0, 1), T_CtoI(0, 2), T_CtoI(0, 3))
+      PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f,\n" RESET, T_CtoI(1, 0), T_CtoI(1, 1), T_CtoI(1, 2), T_CtoI(1, 3))
+      PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f,\n" RESET, T_CtoI(2, 0), T_CtoI(2, 1), T_CtoI(2, 2), T_CtoI(2, 3))
+      PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f\n\n" RESET, T_CtoI(3, 0), T_CtoI(3, 1), T_CtoI(3, 2), T_CtoI(3, 3))
     }
   }
 
@@ -393,50 +399,50 @@ void ROS1Visualizer::visualize_final() {
     Eigen::Matrix3d Ta = Da.colPivHouseholderQr().solve(Eigen::Matrix3d::Identity());
     Eigen::Matrix3d R_IMUtoACC = _app->get_state()->_calib_imu_ACCtoIMU->Rot().transpose();
     Eigen::Matrix3d R_IMUtoGYRO = _app->get_state()->_calib_imu_GYROtoIMU->Rot().transpose();
-    PRINT_INFO(REDPURPLE "Tw:\n" RESET);
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, Tw(0, 0), Tw(0, 1), Tw(0, 2));
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, Tw(1, 0), Tw(1, 1), Tw(1, 2));
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f\n\n" RESET, Tw(2, 0), Tw(2, 1), Tw(2, 2));
-    PRINT_INFO(REDPURPLE "Ta:\n" RESET);
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, Ta(0, 0), Ta(0, 1), Ta(0, 2));
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, Ta(1, 0), Ta(1, 1), Ta(1, 2));
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f\n\n" RESET, Ta(2, 0), Ta(2, 1), Ta(2, 2));
-    PRINT_INFO(REDPURPLE "R_IMUtoACC:\n" RESET);
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, R_IMUtoACC(0, 0), R_IMUtoACC(0, 1), R_IMUtoACC(0, 2));
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, R_IMUtoACC(1, 0), R_IMUtoACC(1, 1), R_IMUtoACC(1, 2));
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f\n\n" RESET, R_IMUtoACC(2, 0), R_IMUtoACC(2, 1), R_IMUtoACC(2, 2));
-    PRINT_INFO(REDPURPLE "R_IMUtoGYRO:\n" RESET);
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, R_IMUtoGYRO(0, 0), R_IMUtoGYRO(0, 1), R_IMUtoGYRO(0, 2));
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, R_IMUtoGYRO(1, 0), R_IMUtoGYRO(1, 1), R_IMUtoGYRO(1, 2));
-    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f\n\n" RESET, R_IMUtoGYRO(2, 0), R_IMUtoGYRO(2, 1), R_IMUtoGYRO(2, 2));
+    PRINT_INFO(REDPURPLE "Tw:\n" RESET)
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, Tw(0, 0), Tw(0, 1), Tw(0, 2))
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, Tw(1, 0), Tw(1, 1), Tw(1, 2))
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f\n\n" RESET, Tw(2, 0), Tw(2, 1), Tw(2, 2))
+    PRINT_INFO(REDPURPLE "Ta:\n" RESET)
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, Ta(0, 0), Ta(0, 1), Ta(0, 2))
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, Ta(1, 0), Ta(1, 1), Ta(1, 2))
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f\n\n" RESET, Ta(2, 0), Ta(2, 1), Ta(2, 2))
+    PRINT_INFO(REDPURPLE "R_IMUtoACC:\n" RESET)
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, R_IMUtoACC(0, 0), R_IMUtoACC(0, 1), R_IMUtoACC(0, 2))
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, R_IMUtoACC(1, 0), R_IMUtoACC(1, 1), R_IMUtoACC(1, 2))
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f\n\n" RESET, R_IMUtoACC(2, 0), R_IMUtoACC(2, 1), R_IMUtoACC(2, 2))
+    PRINT_INFO(REDPURPLE "R_IMUtoGYRO:\n" RESET)
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, R_IMUtoGYRO(0, 0), R_IMUtoGYRO(0, 1), R_IMUtoGYRO(0, 2))
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,\n" RESET, R_IMUtoGYRO(1, 0), R_IMUtoGYRO(1, 1), R_IMUtoGYRO(1, 2))
+    PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f\n\n" RESET, R_IMUtoGYRO(2, 0), R_IMUtoGYRO(2, 1), R_IMUtoGYRO(2, 2))
   }
 
   // IMU intrinsics gravity sensitivity
   if (_app->get_state()->_options.do_calib_imu_g_sensitivity) {
     Eigen::Matrix3d Tg = State::Tg(_app->get_state()->_calib_imu_tg->value());
-    PRINT_INFO(REDPURPLE "Tg:\n" RESET);
-    PRINT_INFO(REDPURPLE "%.6f,%.6f,%.6f,\n" RESET, Tg(0, 0), Tg(0, 1), Tg(0, 2));
-    PRINT_INFO(REDPURPLE "%.6f,%.6f,%.6f,\n" RESET, Tg(1, 0), Tg(1, 1), Tg(1, 2));
-    PRINT_INFO(REDPURPLE "%.6f,%.6f,%.6f\n\n" RESET, Tg(2, 0), Tg(2, 1), Tg(2, 2));
+    PRINT_INFO(REDPURPLE "Tg:\n" RESET)
+    PRINT_INFO(REDPURPLE "%.6f,%.6f,%.6f,\n" RESET, Tg(0, 0), Tg(0, 1), Tg(0, 2))
+    PRINT_INFO(REDPURPLE "%.6f,%.6f,%.6f,\n" RESET, Tg(1, 0), Tg(1, 1), Tg(1, 2))
+    PRINT_INFO(REDPURPLE "%.6f,%.6f,%.6f\n\n" RESET, Tg(2, 0), Tg(2, 1), Tg(2, 2))
   }
 
   // Publish RMSE if we have it
   if (!gt_states.empty()) {
-    PRINT_INFO(REDPURPLE "RMSE: %.3f (deg) orientation\n" RESET, std::sqrt(summed_mse_ori / summed_number));
-    PRINT_INFO(REDPURPLE "RMSE: %.3f (m) position\n\n" RESET, std::sqrt(summed_mse_pos / summed_number));
+    PRINT_INFO(REDPURPLE "RMSE: %.3f (deg) orientation\n" RESET, std::sqrt(summed_mse_ori / summed_number))
+    PRINT_INFO(REDPURPLE "RMSE: %.3f (m) position\n\n" RESET, std::sqrt(summed_mse_pos / summed_number))
   }
 
   // Publish RMSE and NEES if doing simulation
   if (_sim != nullptr) {
-    PRINT_INFO(REDPURPLE "RMSE: %.3f (deg) orientation\n" RESET, std::sqrt(summed_mse_ori / summed_number));
-    PRINT_INFO(REDPURPLE "RMSE: %.3f (m) position\n\n" RESET, std::sqrt(summed_mse_pos / summed_number));
-    PRINT_INFO(REDPURPLE "NEES: %.3f (deg) orientation\n" RESET, summed_nees_ori / summed_number);
-    PRINT_INFO(REDPURPLE "NEES: %.3f (m) position\n\n" RESET, summed_nees_pos / summed_number);
+    PRINT_INFO(REDPURPLE "RMSE: %.3f (deg) orientation\n" RESET, std::sqrt(summed_mse_ori / summed_number))
+    PRINT_INFO(REDPURPLE "RMSE: %.3f (m) position\n\n" RESET, std::sqrt(summed_mse_pos / summed_number))
+    PRINT_INFO(REDPURPLE "NEES: %.3f (deg) orientation\n" RESET, summed_nees_ori / summed_number)
+    PRINT_INFO(REDPURPLE "NEES: %.3f (m) position\n\n" RESET, summed_nees_pos / summed_number)
   }
 
   // Print the total time
   rT2 = boost::posix_time::microsec_clock::local_time();
-  PRINT_INFO(REDPURPLE "TIME: %.3f seconds\n\n" RESET, (rT2 - rT1).total_microseconds() * 1e-6);
+  PRINT_INFO(REDPURPLE "TIME: %.3f seconds\n\n" RESET, (rT2 - rT1).total_microseconds() * 1e-6)
 }
 
 // 处理订阅的IMU数据
@@ -488,7 +494,7 @@ void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
         camera_queue.pop_front();
         auto rT0_2 = boost::posix_time::microsec_clock::local_time();
         double time_total = (rT0_2 - rT0_1).total_microseconds() * 1e-6;
-        PRINT_INFO(BLUE "[TIME]: %.4f seconds total (%.1f hz, %.2f ms behind)\n" RESET, time_total, 1.0 / time_total, update_dt);
+        PRINT_INFO(BLUE "[TIME]: %.4f seconds total (%.1f hz, %.2f ms behind)\n" RESET, time_total, 1.0 / time_total, update_dt)
       }
     }
     thread_update_running = false;
@@ -503,6 +509,7 @@ void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
   }
 }
 
+// 处理订阅的单目图像数据
 void ROS1Visualizer::callback_monocular(const sensor_msgs::ImageConstPtr &msg0, int cam_id0) {
 
   // Check if we should drop this image
@@ -520,7 +527,7 @@ void ROS1Visualizer::callback_monocular(const sensor_msgs::ImageConstPtr &msg0, 
     // 如果编码格式相同，则共享图像数据，CvImage包含header、encoding和image三个成员
     cv_ptr = cv_bridge::toCvShare(msg0, sensor_msgs::image_encodings::MONO8);
   } catch (cv_bridge::Exception &e) {
-    PRINT_ERROR("cv_bridge exception: %s", e.what());
+    PRINT_ERROR("cv_bridge exception: %s", e.what())
     return;
   }
 
@@ -545,6 +552,7 @@ void ROS1Visualizer::callback_monocular(const sensor_msgs::ImageConstPtr &msg0, 
   std::sort(camera_queue.begin(), camera_queue.end()); // 对队列中的图像数据按时间戳排序
 }
 
+// 处理双目相机数据
 void ROS1Visualizer::callback_stereo(const sensor_msgs::ImageConstPtr &msg0, const sensor_msgs::ImageConstPtr &msg1, int cam_id0,
                                      int cam_id1) {
 
@@ -561,7 +569,7 @@ void ROS1Visualizer::callback_stereo(const sensor_msgs::ImageConstPtr &msg0, con
   try {
     cv_ptr0 = cv_bridge::toCvShare(msg0, sensor_msgs::image_encodings::MONO8);
   } catch (cv_bridge::Exception &e) {
-    PRINT_ERROR("cv_bridge exception: %s\n", e.what());
+    PRINT_ERROR("cv_bridge exception: %s\n", e.what())
     return;
   }
 
@@ -570,7 +578,7 @@ void ROS1Visualizer::callback_stereo(const sensor_msgs::ImageConstPtr &msg0, con
   try {
     cv_ptr1 = cv_bridge::toCvShare(msg1, sensor_msgs::image_encodings::MONO8);
   } catch (cv_bridge::Exception &e) {
-    PRINT_ERROR("cv_bridge exception: %s\n", e.what());
+    PRINT_ERROR("cv_bridge exception: %s\n", e.what())
     return;
   }
 
@@ -839,10 +847,11 @@ void ROS1Visualizer::publish_groundtruth() {
   }
 
   // Nice display for the user
+  // 宏定义中已经有了;，所以这里不需要
   PRINT_INFO(REDPURPLE "error to gt => %.3f, %.3f (deg,m) | rmse => %.3f, %.3f (deg,m) | called %d times\n" RESET, err_ori, err_pos,
-             std::sqrt(summed_mse_ori / summed_number), std::sqrt(summed_mse_pos / summed_number), (int)summed_number);
+             std::sqrt(summed_mse_ori / summed_number), std::sqrt(summed_mse_pos / summed_number), (int)summed_number)
   PRINT_INFO(REDPURPLE "nees => %.1f, %.1f (ori,pos) | avg nees = %.1f, %.1f (ori,pos)\n" RESET, ori_nees, pos_nees,
-             summed_nees_ori / summed_number, summed_nees_pos / summed_number);
+             summed_nees_ori / summed_number, summed_nees_pos / summed_number)
 
   //==========================================================================
   //==========================================================================
