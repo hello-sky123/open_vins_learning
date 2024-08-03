@@ -33,8 +33,6 @@
 #include "utils/print.h"
 #include "utils/sensor_data.h"
 
-using namespace ov_core;
-using namespace ov_type;
 using namespace ov_msckf;
 
 ROS1Visualizer::ROS1Visualizer(const std::shared_ptr<ros::NodeHandle> &nh, std::shared_ptr<VioManager> app, std::shared_ptr<Simulator> sim)
@@ -93,7 +91,7 @@ ROS1Visualizer::ROS1Visualizer(const std::shared_ptr<ros::NodeHandle> &nh, std::
     nh->param<std::string>("path_gt", path_to_gt, "");
     if (!path_to_gt.empty()) {
       // 如果有groundtruth文件，则加载真值
-      DatasetReader::load_gt_file(path_to_gt, gt_states);
+      ov_core::DatasetReader::load_gt_file(path_to_gt, gt_states);
       PRINT_DEBUG("gt file path is: %s\n", path_to_gt.c_str())
     }
   }
@@ -153,7 +151,7 @@ ROS1Visualizer::ROS1Visualizer(const std::shared_ptr<ros::NodeHandle> &nh, std::
 }
 
 // 设置订阅者，订阅IMU和相机数据
-void ROS1Visualizer::setup_subscribers(std::shared_ptr<ov_core::YamlParser> parser) {
+void ROS1Visualizer::setup_subscribers(const std::shared_ptr<ov_core::YamlParser> &parser) {
 
   // We need a valid parser
   assert(parser != nullptr);
@@ -250,7 +248,7 @@ void ROS1Visualizer::visualize() {
 }
 
 // 可视化IMU递推的里程计数据
-void ROS1Visualizer::visualize_odometry(double timestamp) {
+void ROS1Visualizer::visualize_odometry(double timestamp) const {
 
   // Return if we have not inited
   if (!_app->initialized())
@@ -322,7 +320,7 @@ void ROS1Visualizer::visualize_odometry(double timestamp) {
     Phi.block(0, 3, 3, 3).setIdentity();
     Phi.block(3, 0, 3, 3).setIdentity();
     Phi.block(6, 6, 6, 6).setIdentity();
-    cov_plus = Phi * cov_plus * Phi.transpose();
+    cov_plus = Phi * cov_plus * Phi.transpose(); // 作用是将q,p的顺序调整为p,q
     for (int r = 0; r < 6; r++) {
       for (int c = 0; c < 6; c++) {
         odomIinM.pose.covariance[6 * r + c] = cov_plus(r, c);
@@ -369,7 +367,7 @@ void ROS1Visualizer::visualize_final() {
   // Final camera intrinsics
   if (_app->get_state()->_options.do_calib_camera_intrinsics) {
     for (int i = 0; i < _app->get_state()->_options.num_cameras; i++) {
-      std::shared_ptr<Vec> calib = _app->get_state()->_cam_intrinsics.at(i);
+      std::shared_ptr<ov_type::Vec> calib = _app->get_state()->_cam_intrinsics.at(i);
       PRINT_INFO(REDPURPLE "cam%d intrinsics:\n" RESET, (int)i)
       PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f\n" RESET, calib->value()(0), calib->value()(1), calib->value()(2), calib->value()(3))
       PRINT_INFO(REDPURPLE "%.5f,%.5f,%.5f,%.5f\n\n" RESET, calib->value()(4), calib->value()(5), calib->value()(6), calib->value()(7))
@@ -379,9 +377,9 @@ void ROS1Visualizer::visualize_final() {
   // Final camera extrinsics
   if (_app->get_state()->_options.do_calib_camera_pose) {
     for (int i = 0; i < _app->get_state()->_options.num_cameras; i++) {
-      std::shared_ptr<PoseJPL> calib = _app->get_state()->_calib_IMUtoCAM.at(i);
+      std::shared_ptr<ov_type::PoseJPL> calib = _app->get_state()->_calib_IMUtoCAM.at(i);
       Eigen::Matrix4d T_CtoI = Eigen::Matrix4d::Identity();
-      T_CtoI.block(0, 0, 3, 3) = quat_2_Rot(calib->quat()).transpose();
+      T_CtoI.block(0, 0, 3, 3) = ov_core::quat_2_Rot(calib->quat()).transpose();
       T_CtoI.block(0, 3, 3, 1) = -T_CtoI.block(0, 0, 3, 3) * calib->pos();
       PRINT_INFO(REDPURPLE "T_C%dtoI:\n" RESET, i)
       PRINT_INFO(REDPURPLE "%.3f,%.3f,%.3f,%.3f,\n" RESET, T_CtoI(0, 0), T_CtoI(0, 1), T_CtoI(0, 2), T_CtoI(0, 3))
@@ -631,7 +629,7 @@ void ROS1Visualizer::publish_state() {
   poseIinM.pose.pose.position.z = state->_imu->pos()(2);
 
   // Finally set the covariance in the message (in the order position then orientation as per ros convention)
-  std::vector<std::shared_ptr<Type>> statevars;
+  std::vector<std::shared_ptr<ov_type::Type>> statevars;
   statevars.push_back(state->_imu->pose()->p());
   statevars.push_back(state->_imu->pose()->q());
   Eigen::Matrix<double, 6, 6> covariance_posori = StateHelper::get_marginal_covariance(_app->get_state(), statevars);
@@ -738,7 +736,7 @@ void ROS1Visualizer::publish_groundtruth() {
   double timestamp_inI = _app->get_state()->_timestamp + t_ItoC;
 
   // Check that we have the timestamp in our GT file [time(sec),q_GtoI,p_IinG,v_IinG,b_gyro,b_accel]
-  if (_sim == nullptr && (gt_states.empty() || !DatasetReader::get_gt_state(timestamp_inI, state_gt, gt_states))) {
+  if (_sim == nullptr && (gt_states.empty() || !ov_core::DatasetReader::get_gt_state(timestamp_inI, state_gt, gt_states))) {
     return;
   }
 
@@ -811,14 +809,14 @@ void ROS1Visualizer::publish_groundtruth() {
   Eigen::Matrix<double, 4, 1> quat_gt, quat_st, quat_diff;
   quat_gt << state_gt(1, 0), state_gt(2, 0), state_gt(3, 0), state_gt(4, 0);
   quat_st << state_ekf(0, 0), state_ekf(1, 0), state_ekf(2, 0), state_ekf(3, 0);
-  quat_diff = quat_multiply(quat_st, Inv(quat_gt));
+  quat_diff = ov_core::quat_multiply(quat_st, ov_core::Inv(quat_gt));
   double err_ori = (180 / M_PI) * 2 * quat_diff.block(0, 0, 3, 1).norm();
 
   //==========================================================================
   //==========================================================================
 
   // Get covariance of pose
-  std::vector<std::shared_ptr<Type>> statevars;
+  std::vector<std::shared_ptr<ov_type::Type>> statevars;
   statevars.push_back(_app->get_state()->_imu->q());
   statevars.push_back(_app->get_state()->_imu->p());
   Eigen::Matrix<double, 6, 6> covariance = StateHelper::get_marginal_covariance(_app->get_state(), statevars);

@@ -86,7 +86,7 @@ public:
    * @brief Will setup ROS subscribers and callbacks
    * @param parser Configuration file parser
    */
-  void setup_subscribers(std::shared_ptr<ov_core::YamlParser> parser);
+  void setup_subscribers(const std::shared_ptr<ov_core::YamlParser>& parser);
 
   /**
    * @brief Will visualize the system if we have new things
@@ -98,7 +98,7 @@ public:
    * This will take the current state estimate and get the propagated pose to the desired time.
    * This can be used to get pose estimates on systems which require high frequency pose estimates.
    */
-  void visualize_odometry(double timestamp);
+  void visualize_odometry(double timestamp) const;
 
   /**
    * @brief After the run has ended, print results
