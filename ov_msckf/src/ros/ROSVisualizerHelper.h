@@ -127,7 +127,7 @@ public:
    * @param of_state_std Output file for covariance
    * @param of_state_gt Output file for groundtruth (if we have it from sim)
    */
-  static void sim_save_total_state_to_file(std::shared_ptr<State> state, std::shared_ptr<Simulator> sim, std::ofstream &of_state_est,
+  static void sim_save_total_state_to_file(const std::shared_ptr<State>& state, const std::shared_ptr<Simulator>& sim, std::ofstream &of_state_est,
                                            std::ofstream &of_state_std, std::ofstream &of_state_gt);
 
 private:

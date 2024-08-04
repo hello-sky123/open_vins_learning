@@ -416,7 +416,7 @@ cv::Mat VioManager::get_historical_viz_image() {
 
 std::vector<Eigen::Vector3d> VioManager::get_features_SLAM() {
   std::vector<Eigen::Vector3d> slam_feats;
-  for (auto &f : state->_features_SLAM) {
+  for (auto &f: state->_features_SLAM) {
     if ((int)f.first <= 4 * state->_options.max_aruco_features)
       continue;
     if (ov_type::LandmarkRepresentation::is_relative_representation(f.second->_feat_representation)) {

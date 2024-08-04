@@ -21,7 +21,6 @@
 
 #include "ROSVisualizerHelper.h"
 
-#include "core/VioManager.h"
 #include "sim/Simulator.h"
 #include "state/State.h"
 #include "state/StateHelper.h"
@@ -32,6 +31,7 @@ using namespace ov_msckf;
 using namespace std;
 
 #if ROS_AVAILABLE == 1
+// 将地图点转换为ROS点云消息
 sensor_msgs::PointCloud2 ROSVisualizerHelper::get_ros_pointcloud(const std::vector<Eigen::Vector3d> &feats) {
 
   // Declare message and sizes
@@ -44,8 +44,9 @@ sensor_msgs::PointCloud2 ROSVisualizerHelper::get_ros_pointcloud(const std::vect
   cloud.is_dense = false; // there may be invalid points
 
   // Setup pointcloud fields
+  // 提供了一系列方法来对点云数据执行常见的修改操作，而无需从头开始重新生成整个点云
   sensor_msgs::PointCloud2Modifier modifier(cloud);
-  modifier.setPointCloud2FieldsByString(1, "xyz");
+  modifier.setPointCloud2FieldsByString(1, "xyz"); // 修改点云的字段，这里我们只保留xyz字段
   modifier.resize(feats.size());
 
   // Iterators
@@ -54,7 +55,7 @@ sensor_msgs::PointCloud2 ROSVisualizerHelper::get_ros_pointcloud(const std::vect
   sensor_msgs::PointCloud2Iterator<float> out_z(cloud, "z");
 
   // Fill our iterators
-  for (const auto &pt : feats) {
+  for (const auto &pt: feats) {
     *out_x = (float)pt(0);
     ++out_x;
     *out_y = (float)pt(1);
@@ -66,6 +67,7 @@ sensor_msgs::PointCloud2 ROSVisualizerHelper::get_ros_pointcloud(const std::vect
   return cloud;
 }
 
+// 将pose消息转换为带时间戳的tf变换
 tf::StampedTransform ROSVisualizerHelper::get_stamped_transform_from_pose(const std::shared_ptr<ov_type::PoseJPL> &pose, bool flip_trans) {
 
   // Need to flip the transform to the IMU frame
@@ -151,7 +153,8 @@ geometry_msgs::msg::TransformStamped ROSVisualizerHelper::get_stamped_transform_
 }
 #endif
 
-void ROSVisualizerHelper::sim_save_total_state_to_file(std::shared_ptr<State> state, std::shared_ptr<Simulator> sim,
+// 保存当前估计的状态和真值到文件中
+void ROSVisualizerHelper::sim_save_total_state_to_file(const std::shared_ptr<State> &state, const std::shared_ptr<Simulator> &sim,
                                                        std::ofstream &of_state_est, std::ofstream &of_state_std,
                                                        std::ofstream &of_state_gt) {
 
@@ -169,8 +172,8 @@ void ROSVisualizerHelper::sim_save_total_state_to_file(std::shared_ptr<State> st
     timestamp_inI = state->_timestamp + sim->get_true_parameters().calib_camimu_dt;
     if (sim->get_state(timestamp_inI, state_gt)) {
       // STATE: write current true state
-      of_state_gt.precision(5);
-      of_state_gt.setf(std::ios::fixed, std::ios::floatfield);
+      of_state_gt.precision(5); // 设置精度为5位小数
+      of_state_gt.setf(std::ios::fixed, std::ios::floatfield); // 设置浮点数格式为定点
       of_state_gt << state_gt(0) << " ";
       of_state_gt.precision(6);
       of_state_gt << state_gt(1) << " " << state_gt(2) << " " << state_gt(3) << " " << state_gt(4) << " ";

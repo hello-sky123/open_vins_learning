@@ -199,6 +199,7 @@ void ROS1Visualizer::setup_subscribers(const std::shared_ptr<ov_core::YamlParser
   }
 }
 
+// 可视化系统状态
 void ROS1Visualizer::visualize() {
 
   // Return if we have already visualized
@@ -334,7 +335,7 @@ void ROS1Visualizer::visualize_odometry(double timestamp) const {
     pub_odomimu.publish(odomIinM);
   }
 
-  // Publish our transform on TF
+  // Publish our transform on TF(T_wi)
   // NOTE: since we use JPL we have an implicit conversion to Hamilton when we publish
   // NOTE: a rotation from GtoI in JPL has the same xyzw as a ItoG Hamilton rotation
   auto odom_pose = std::make_shared<ov_type::PoseJPL>();
@@ -347,7 +348,7 @@ void ROS1Visualizer::visualize_odometry(double timestamp) const {
   }
 
   // Loop through each camera calibration and publish it
-  for (const auto &calib : state->_calib_IMUtoCAM) {
+  for (const auto &calib: state->_calib_IMUtoCAM) {
     tf::StampedTransform trans_calib = ROSVisualizerHelper::get_stamped_transform_from_pose(calib.second, true);
     trans_calib.frame_id_ = "imu";
     trans_calib.child_frame_id_ = "cam" + std::to_string(calib.first);
@@ -463,7 +464,7 @@ void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
   if (thread_update_running)
     return;
   thread_update_running = true;
-  // 开启一个新的线程来处理图像队列
+  // 每次回调函数执行，都会开启一个新的线程来处理图像队列
   std::thread thread([&] {
     // Lock on the queue (prevents new images from appending)
     std::lock_guard<std::mutex> lck(camera_queue_mtx); // 加锁，防止新图像加入队列
@@ -471,22 +472,25 @@ void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
     // Count how many unique image streams
     // 遍历图像队列，统计不同相机ID的数量
     std::map<int, bool> unique_cam_ids;
-    for (const auto &cam_msg : camera_queue) {
+    for (const auto &cam_msg: camera_queue) {
       unique_cam_ids[cam_msg.sensor_ids.at(0)] = true;
     }
 
     // If we do not have enough unique cameras then we need to wait
     // We should wait till we have one of each camera to ensure we propagate in the correct order
     auto params = _app->get_params();
+    // num_cameras = 1，表示单目相机，num_cameras = 2，表示双目相机，>2表示binocular
     size_t num_unique_cameras = (params.state_options.num_cameras == 2) ? 1 : params.state_options.num_cameras;
+    // 单目和双目模式，num_unique_cameras都会是1，意味着双目左右目分别处理
     if (unique_cam_ids.size() == num_unique_cameras) {
 
       // Loop through our queue and see if we are able to process any of our camera measurements
       // We are able to process if we have at least one IMU measurement greater than the camera time
       double timestamp_imu_inC = message.timestamp - _app->get_state()->_calib_dt_CAMtoIMU->value()(0);
+      // t_imu = t_cam + t_off
       while (!camera_queue.empty() && camera_queue.at(0).timestamp < timestamp_imu_inC) {
-        auto rT0_1 = boost::posix_time::microsec_clock::local_time();
-        double update_dt = 100.0 * (timestamp_imu_inC - camera_queue.at(0).timestamp);
+        auto rT0_1 = boost::posix_time::microsec_clock::local_time(); // 获取当前时间
+        double update_dt = 1000.0 * (timestamp_imu_inC - camera_queue.at(0).timestamp); // 当前IMU时间戳与最早图像时间戳的差值
         _app->feed_measurement_camera(camera_queue.at(0));
         visualize();
         camera_queue.pop_front();
@@ -605,6 +609,7 @@ void ROS1Visualizer::callback_stereo(const sensor_msgs::ImageConstPtr &msg0, con
   std::sort(camera_queue.begin(), camera_queue.end());
 }
 
+// 发布系统状态
 void ROS1Visualizer::publish_state() {
 
   // Get the current state
@@ -665,6 +670,7 @@ void ROS1Visualizer::publish_state() {
   poses_seq_imu++;
 }
 
+// 发布追踪结果
 void ROS1Visualizer::publish_images() {
 
   // Return if we have already visualized
@@ -693,6 +699,7 @@ void ROS1Visualizer::publish_images() {
   it_pub_tracks.publish(exl_msg);
 }
 
+// 发布特征点的追踪结果
 void ROS1Visualizer::publish_features() {
 
   // Check if we have subscribers
@@ -725,6 +732,7 @@ void ROS1Visualizer::publish_features() {
   pub_points_sim.publish(cloud_SIM);
 }
 
+// 发布真值位姿，以及打印位姿偏差
 void ROS1Visualizer::publish_groundtruth() {
 
   // Our groundtruth state
@@ -855,6 +863,7 @@ void ROS1Visualizer::publish_groundtruth() {
   //==========================================================================
 }
 
+// 发布回环信息
 void ROS1Visualizer::publish_loopclosure_information() {
 
   // Get the current tracks in this frame
@@ -932,7 +941,7 @@ void ROS1Visualizer::publish_loopclosure_information() {
     sensor_msgs::PointCloud point_cloud;
     point_cloud.header = header;
     point_cloud.header.frame_id = "global";
-    for (const auto &feattimes : active_tracks_posinG) {
+    for (const auto &feattimes: active_tracks_posinG) {
 
       // Get this feature information
       size_t featid = feattimes.first;
@@ -973,7 +982,7 @@ void ROS1Visualizer::publish_loopclosure_information() {
     cv::Mat depthmap_viz = active_cam0_image;
 
     // Loop through all points and append
-    for (const auto &feattimes : active_tracks_uvd) {
+    for (const auto &feattimes: active_tracks_uvd) {
 
       // Get this feature information
       size_t featid = feattimes.first;
