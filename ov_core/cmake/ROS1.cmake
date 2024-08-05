@@ -5,35 +5,36 @@ find_package(catkin QUIET COMPONENTS roscpp rosbag sensor_msgs cv_bridge)
 
 # Describe ROS project
 option(ENABLE_ROS "Enable or disable building with ROS (if it is found)" ON)
-if (catkin_FOUND AND ENABLE_ROS)
-    add_definitions(-DROS_AVAILABLE=1)
-    catkin_package(
-            CATKIN_DEPENDS roscpp rosbag sensor_msgs cv_bridge
-            INCLUDE_DIRS src/
-            LIBRARIES ov_core_lib
-    )
-else ()
-    add_definitions(-DROS_AVAILABLE=0)
-    message(WARNING "BUILDING WITHOUT ROS!")
-    include(GNUInstallDirs)
-    set(CATKIN_PACKAGE_LIB_DESTINATION "${CMAKE_INSTALL_LIBDIR}")
-    set(CATKIN_PACKAGE_BIN_DESTINATION "${CMAKE_INSTALL_BINDIR}")
-    set(CATKIN_GLOBAL_INCLUDE_DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/open_vins/")
-endif ()
+if(catkin_FOUND AND ENABLE_ROS)
+  add_definitions(-DROS_AVAILABLE=1)
+  # 通过catkin_package宏，可以清晰地定义一个ROS包的依赖、头文件目录和库，确保其他依赖此包的项目能够正确找到并使用这些资源
+  catkin_package(
+    CATKIN_DEPENDS roscpp rosbag sensor_msgs cv_bridge
+    INCLUDE_DIRS src/
+    LIBRARIES ov_core_lib
+  )
+else()
+  add_definitions(-DROS_AVAILABLE=0)
+  message(WARNING "BUILDING WITHOUT ROS!")
+  include(GNUInstallDirs)
+  set(CATKIN_PACKAGE_LIB_DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+  set(CATKIN_PACKAGE_BIN_DESTINATION "${CMAKE_INSTALL_BINDIR}")
+  set(CATKIN_GLOBAL_INCLUDE_DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/open_vins/")
+endif()
 
 # Include our header files
 include_directories(
-        src
-        ${EIGEN3_INCLUDE_DIR}
-        ${Boost_INCLUDE_DIRS}
-        ${catkin_INCLUDE_DIRS}
+  src
+  ${EIGEN3_INCLUDE_DIR}
+  ${Boost_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS}
 )
 
 # Set link libraries used by all binaries
 list(APPEND thirdparty_libraries
-        ${Boost_LIBRARIES}
-        ${OpenCV_LIBRARIES}
-        ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  ${catkin_LIBRARIES}
 )
 
 ##################################################
@@ -41,65 +42,66 @@ list(APPEND thirdparty_libraries
 ##################################################
 
 list(APPEND LIBRARY_SOURCES
-        src/dummy.cpp
-        src/cpi/CpiV1.cpp
-        src/cpi/CpiV2.cpp
-        src/sim/BsplineSE3.cpp
-        src/track/TrackBase.cpp
-        src/track/TrackAruco.cpp
-        src/track/TrackDescriptor.cpp
-        src/track/TrackKLT.cpp
-        src/track/TrackSIM.cpp
-        src/types/Landmark.cpp
-        src/feat/Feature.cpp
-        src/feat/FeatureDatabase.cpp
-        src/feat/FeatureInitializer.cpp
-        src/utils/print.cpp
+  src/dummy.cpp
+  src/cpi/CpiV1.cpp
+  src/cpi/CpiV2.cpp
+  src/sim/BsplineSE3.cpp
+  src/track/TrackBase.cpp
+  src/track/TrackAruco.cpp
+  src/track/TrackDescriptor.cpp
+  src/track/TrackKLT.cpp
+  src/track/TrackSIM.cpp
+  src/types/Landmark.cpp
+  src/feat/Feature.cpp
+  src/feat/FeatureDatabase.cpp
+  src/feat/FeatureInitializer.cpp
+  src/utils/print.cpp
 )
-file(GLOB_RECURSE LIBRARY_HEADERS "src/*.h")
+file(GLOB_RECURSE LIBRARY_HEADERS "src/*.h") # 搜索src目录及其所有子目录，找到所有扩展名为.h的文件
 add_library(ov_core_lib SHARED ${LIBRARY_SOURCES} ${LIBRARY_HEADERS})
 target_link_libraries(ov_core_lib ${thirdparty_libraries})
+# 为ov_core_lib目标添加src/目录作为公共头文件搜索路径。这意味着src/中的头文件将对ov_core_lib以及所有链接了ov_core_lib的其他目标可用
 target_include_directories(ov_core_lib PUBLIC src/)
 install(TARGETS ov_core_lib
-        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION} # lib
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION} # lib
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION} # lib/ov_core
 )
 install(DIRECTORY src/
-        DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}
-        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+  DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION} # include
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 )
 
 ##################################################
 # Make binary files!
 ##################################################
 
-if (catkin_FOUND AND ENABLE_ROS)
+if(catkin_FOUND AND ENABLE_ROS)
 
-    add_executable(test_tracking src/test_tracking.cpp)
-    target_link_libraries(test_tracking ov_core_lib ${thirdparty_libraries})
-    install(TARGETS test_tracking
-            ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-            LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-            RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-    )
+  add_executable(test_tracking src/test_tracking.cpp)
+  target_link_libraries(test_tracking ov_core_lib ${thirdparty_libraries})
+  install(TARGETS test_tracking
+    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  )
 
-endif ()
+endif()
 
 add_executable(test_webcam src/test_webcam.cpp)
 target_link_libraries(test_webcam ov_core_lib ${thirdparty_libraries})
 install(TARGETS test_webcam
-        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 add_executable(test_profile src/test_profile.cpp)
 target_link_libraries(test_profile ov_core_lib ${thirdparty_libraries})
 install(TARGETS test_profile
-        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 
