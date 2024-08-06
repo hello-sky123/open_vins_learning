@@ -28,17 +28,9 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/time_synchronizer.h>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
 #include <ros/ros.h>
-#include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/Imu.h>
-#include <sensor_msgs/NavSatFix.h>
-#include <sensor_msgs/PointCloud.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/point_cloud2_iterator.h>
-#include <std_msgs/Float64.h>
 #include <tf/transform_broadcaster.h>
 
 #include <atomic>
@@ -48,8 +40,6 @@
 
 #include <Eigen/Eigen>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/filesystem.hpp>
-#include <cv_bridge/cv_bridge.h>
 
 namespace ov_core {
 class YamlParser;
@@ -122,13 +112,13 @@ protected:
   void publish_images();
 
   /// Publish current features
-  void publish_features();
+  void publish_features() const;
 
   /// Publish groundtruth (if we have it)
   void publish_groundtruth();
 
   /// Publish loop-closure information of current pose and active track information
-  void publish_loopclosure_information();
+  void publish_loopclosure_information() const;
 
   /// Global node handler
   std::shared_ptr<ros::NodeHandle> _nh;

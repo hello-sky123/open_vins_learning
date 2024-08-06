@@ -21,6 +21,14 @@
 
 #include "ROS1Visualizer.h"
 
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
+#include <sensor_msgs/CameraInfo.h>
+#include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/point_cloud2_iterator.h>
+#include <boost/filesystem.hpp>
+#include <cv_bridge/cv_bridge.h>
 #include <utility>
 
 #include "core/VioManager.h"
@@ -358,6 +366,7 @@ void ROS1Visualizer::visualize_odometry(double timestamp) const {
   }
 }
 
+// TODO
 void ROS1Visualizer::visualize_final() {
 
   // Final time offset value
@@ -700,7 +709,7 @@ void ROS1Visualizer::publish_images() {
 }
 
 // 发布特征点的追踪结果
-void ROS1Visualizer::publish_features() {
+void ROS1Visualizer::publish_features() const {
 
   // Check if we have subscribers
   if (pub_points_msckf.getNumSubscribers() == 0 && pub_points_slam.getNumSubscribers() == 0 && pub_points_aruco.getNumSubscribers() == 0 &&
@@ -863,8 +872,8 @@ void ROS1Visualizer::publish_groundtruth() {
   //==========================================================================
 }
 
-// 发布回环信息
-void ROS1Visualizer::publish_loopclosure_information() {
+// TODO
+void ROS1Visualizer::publish_loopclosure_information() const {
 
   // Get the current tracks in this frame
   double active_tracks_time1 = -1;
