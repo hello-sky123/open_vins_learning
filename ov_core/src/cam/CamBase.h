@@ -23,8 +23,6 @@
 #define OV_CORE_CAM_BASE_H
 
 #include <Eigen/Eigen>
-#include <unordered_map>
-
 #include <opencv2/opencv.hpp>
 
 namespace ov_core {
@@ -46,7 +44,7 @@ public:
    */
   CamBase(int width, int height) : _width(width), _height(height) {}
 
-  virtual ~CamBase() {}
+  virtual ~CamBase() = default;
 
   /**
    * @brief This will set and update the camera calibration values.
@@ -94,9 +92,8 @@ public:
    * @return 2d vector of normalized coordinates
    */
   Eigen::Vector2d undistort_d(const Eigen::Vector2d &uv_dist) {
-    Eigen::Vector2f ept1, ept2;
-    ept1 = uv_dist.cast<float>();
-    ept2 = undistort_f(ept1);
+    Eigen::Vector2f ept1 = uv_dist.cast<float>();
+    Eigen::Vector2f ept2 = undistort_f(ept1);
     return ept2.cast<double>();
   }
 
@@ -106,9 +103,9 @@ public:
    * @return 2d vector of normalized coordinates
    */
   cv::Point2f undistort_cv(const cv::Point2f &uv_dist) {
-    Eigen::Vector2f ept1, ept2;
+    Eigen::Vector2f ept1;
     ept1 << uv_dist.x, uv_dist.y;
-    ept2 = undistort_f(ept1);
+    Eigen::Vector2f ept2 = undistort_f(ept1);
     cv::Point2f pt_out;
     pt_out.x = ept2(0);
     pt_out.y = ept2(1);
@@ -128,9 +125,8 @@ public:
    * @return 2d vector of raw uv coordinate
    */
   Eigen::Vector2d distort_d(const Eigen::Vector2d &uv_norm) {
-    Eigen::Vector2f ept1, ept2;
-    ept1 = uv_norm.cast<float>();
-    ept2 = distort_f(ept1);
+    Eigen::Vector2f ept1 = uv_norm.cast<float>();
+    Eigen::Vector2f ept2 = distort_f(ept1);
     return ept2.cast<double>();
   }
 
@@ -140,9 +136,9 @@ public:
    * @return 2d vector of raw uv coordinate
    */
   cv::Point2f distort_cv(const cv::Point2f &uv_norm) {
-    Eigen::Vector2f ept1, ept2;
+    Eigen::Vector2f ept1;
     ept1 << uv_norm.x, uv_norm.y;
-    ept2 = distort_f(ept1);
+    Eigen::Vector2f ept2 = distort_f(ept1);
     cv::Point2f pt_out;
     pt_out.x = ept2(0);
     pt_out.y = ept2(1);
@@ -158,19 +154,19 @@ public:
   virtual void compute_distort_jacobian(const Eigen::Vector2d &uv_norm, Eigen::MatrixXd &H_dz_dzn, Eigen::MatrixXd &H_dz_dzeta) = 0;
 
   /// Gets the complete intrinsic vector
-  Eigen::MatrixXd get_value() { return camera_values; }
+  Eigen::MatrixXd get_value() const { return camera_values; }
 
   /// Gets the camera matrix
-  cv::Matx33d get_K() { return camera_k_OPENCV; }
+  cv::Matx33d get_K() const { return camera_k_OPENCV; }
 
   /// Gets the camera distortion
-  cv::Vec4d get_D() { return camera_d_OPENCV; }
+  cv::Vec4d get_D() const { return camera_d_OPENCV; }
 
   /// Gets the width of the camera images
-  int w() { return _width; }
+  int w() const { return _width; }
 
   /// Gets the height of the camera images
-  int h() { return _height; }
+  int h() const { return _height; }
 
 protected:
   // Cannot construct the base camera class, needs a distortion model

@@ -79,7 +79,7 @@ namespace ov_core {
  * To equate this camera class to Kalibr's models, this is what you would use for `pinhole-radtan`.
  *
  */
-class CamRadtan : public CamBase {
+class CamRadtan: public CamBase {
 
 public:
   /**
@@ -87,9 +87,9 @@ public:
    * @param width Width of the camera (raw pixels)
    * @param height Height of the camera (raw pixels)
    */
-  CamRadtan(int width, int height) : CamBase(width, height) {}
+  CamRadtan(int width, int height): CamBase(width, height) {}
 
-  ~CamRadtan() {}
+  ~CamRadtan() override = default;
 
   /**
    * @brief Given a raw uv point, this will undistort it based on the camera matrices into normalized camera coords.
@@ -108,7 +108,7 @@ public:
     mat.at<float>(0, 1) = uv_dist(1);
     mat = mat.reshape(2); // Nx1, 2-channel
 
-    // Undistort it!
+    // Undistort it! 这个函数兼容了4, 5, 8, 12 or 14个参数的畸变模型
     cv::undistortPoints(mat, mat, camK, camD);
 
     // Construct our return vector
@@ -169,11 +169,11 @@ public:
     double y_2 = uv_norm(1) * uv_norm(1);
     double x_y = uv_norm(0) * uv_norm(1);
     H_dz_dzn(0, 0) = cam_d(0) * ((1 + cam_d(4) * r_2 + cam_d(5) * r_4) + (2 * cam_d(4) * x_2 + 4 * cam_d(5) * x_2 * r_2) +
-                                 2 * cam_d(6) * y + (2 * cam_d(7) * x + 4 * cam_d(7) * x));
+                                             (2 * cam_d(6) * y) + (2 * cam_d(7) * x + 4 * cam_d(7) * x));
     H_dz_dzn(0, 1) = cam_d(0) * (2 * cam_d(4) * x_y + 4 * cam_d(5) * x_y * r_2 + 2 * cam_d(6) * x + 2 * cam_d(7) * y);
     H_dz_dzn(1, 0) = cam_d(1) * (2 * cam_d(4) * x_y + 4 * cam_d(5) * x_y * r_2 + 2 * cam_d(6) * x + 2 * cam_d(7) * y);
     H_dz_dzn(1, 1) = cam_d(1) * ((1 + cam_d(4) * r_2 + cam_d(5) * r_4) + (2 * cam_d(4) * y_2 + 4 * cam_d(5) * y_2 * r_2) +
-                                 2 * cam_d(7) * x + (2 * cam_d(6) * y + 4 * cam_d(6) * y));
+                                             (2 * cam_d(7) * x) + (2 * cam_d(6) * y + 4 * cam_d(6) * y));
 
     // Calculate distorted coordinates for radtan
     double x1 = uv_norm(0) * (1 + cam_d(4) * r_2 + cam_d(5) * r_4) + 2 * cam_d(6) * uv_norm(0) * uv_norm(1) +
