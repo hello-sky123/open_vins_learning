@@ -42,9 +42,9 @@ public:
    *
    * @param size_ degrees of freedom of variable (i.e., the size of the error state)
    */
-  Type(int size_) { _size = size_; }
+  explicit Type(int size_) { _size = size_; }
 
-  virtual ~Type(){};
+  virtual ~Type()= default;
 
   /**
    * @brief Sets id used to track location of variable in the filter covariance
@@ -59,12 +59,12 @@ public:
   /**
    * @brief Access to variable id (i.e. its location in the covariance)
    */
-  int id() { return _id; }
+  int id() const { return _id; }
 
   /**
    * @brief Access to variable size (i.e. its error state size)
    */
-  int size() { return _size; }
+  int size() const { return _size; }
 
   /**
    * @brief Update variable due to perturbation of error state

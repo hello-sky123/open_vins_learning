@@ -22,6 +22,8 @@
 #ifndef OV_TYPE_TYPE_POSEJPL_H
 #define OV_TYPE_TYPE_POSEJPL_H
 
+#include <memory>
+
 #include "JPLQuat.h"
 #include "Vec.h"
 #include "utils/quat_ops.h"
@@ -34,14 +36,14 @@ namespace ov_type {
  * Internally we use a JPLQuat quaternion representation for the orientation and 3D Vec position.
  * Please see JPLQuat for details on its update procedure and its left multiplicative error.
  */
-class PoseJPL : public Type {
+class PoseJPL: public Type {
 
 public:
-  PoseJPL() : Type(6) {
+  PoseJPL(): Type(6) {
 
     // Initialize subvariables
-    _q = std::shared_ptr<JPLQuat>(new JPLQuat());
-    _p = std::shared_ptr<Vec>(new Vec(3));
+    _q = std::make_shared<JPLQuat>(); // 排在前面
+    _p = std::make_shared<Vec>(3);
 
     // Set our default state value
     Eigen::Matrix<double, 7, 1> pose0;
@@ -63,7 +65,7 @@ public:
   void set_local_id(int new_id) override {
     _id = new_id;
     _q->set_local_id(new_id);
-    _p->set_local_id(new_id + ((new_id != -1) ? _q->size() : 0));
+    _p->set_local_id(new_id + (new_id != -1 ? _q->size() : 0));
   }
 
   /**
@@ -104,7 +106,7 @@ public:
 
   // 克隆一个新的对象
   std::shared_ptr<Type> clone() override {
-    auto Clone = std::shared_ptr<PoseJPL>(new PoseJPL());
+    auto Clone = std::make_shared<PoseJPL>();
     Clone->set_value(value());
     Clone->set_fej(fej());
     return Clone;

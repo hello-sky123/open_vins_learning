@@ -95,9 +95,9 @@ public:
    * @return True if it is a relative representation
    */
   static inline bool is_relative_representation(Representation feat_representation) {
-    return (feat_representation == Representation::ANCHORED_3D || feat_representation == Representation::ANCHORED_FULL_INVERSE_DEPTH ||
-            feat_representation == Representation::ANCHORED_MSCKF_INVERSE_DEPTH ||
-            feat_representation == Representation::ANCHORED_INVERSE_DEPTH_SINGLE);
+    return feat_representation == ANCHORED_3D || feat_representation == ANCHORED_FULL_INVERSE_DEPTH ||
+            feat_representation == ANCHORED_MSCKF_INVERSE_DEPTH ||
+            feat_representation == ANCHORED_INVERSE_DEPTH_SINGLE;
   }
 
 private:

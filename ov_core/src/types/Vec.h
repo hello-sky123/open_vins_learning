@@ -29,19 +29,19 @@ namespace ov_type {
 /**
  * @brief Derived Type class that implements vector variables
  */
-class Vec : public Type {
+class Vec: public Type {
 
 public:
   /**
    * @brief Default constructor for Vec
    * @param dim Size of the vector (will be same as error state)
    */
-  Vec(int dim) : Type(dim) {
+  explicit Vec(int dim) : Type(dim) {
     _value = Eigen::VectorXd::Zero(dim);
     _fej = Eigen::VectorXd::Zero(dim);
   }
 
-  ~Vec() {}
+  ~Vec() override = default;
 
   /**
    * @brief Implements the update operation through standard vector addition
@@ -61,7 +61,8 @@ public:
    * @brief Performs all the cloning
    */
   std::shared_ptr<Type> clone() override {
-    auto Clone = std::shared_ptr<Type>(new Vec(_size));
+    // 修改为std::make_shared来创建Vec的共享指针，可以减少一次内存分配和构造调用
+    auto Clone = std::make_shared<Vec>(_size);
     Clone->set_value(value());
     Clone->set_fej(fej());
     return Clone;

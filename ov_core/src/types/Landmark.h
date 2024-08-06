@@ -24,7 +24,6 @@
 
 #include "LandmarkRepresentation.h"
 #include "Vec.h"
-#include "utils/print.h"
 
 namespace ov_type {
 
@@ -35,11 +34,11 @@ namespace ov_type {
  * Additionally if this is an anchored representation we store what clone timestamp this is anchored from and what camera.
  * If this features should be marginalized its flag can be set and during cleanup it will be removed.
  */
-class Landmark : public Vec {
+class Landmark: public Vec {
 
 public:
   /// Default constructor (feature is a Vec of size 3 or Vec of size 1)
-  Landmark(int dim) : Vec(dim) {}
+  Landmark(int dim): Vec(dim) {}
 
   /// Feature ID of this landmark (corresponds to frontend id)
   size_t _featid;

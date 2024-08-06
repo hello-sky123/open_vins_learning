@@ -23,7 +23,6 @@
 #define OV_CORE_OPENCV_LAMBDA_BODY_H
 
 #include <functional>
-#include <opencv2/opencv.hpp>
 
 namespace ov_core {
 
@@ -34,13 +33,15 @@ namespace ov_core {
  * On newer versions this doesn't seem to be needed, but here we just use it to ensure we can work for more opencv version.
  * https://answers.opencv.org/question/65800/how-to-use-lambda-as-a-parameter-to-parallel_for_/?answer=130691#post-id-130691
  */
+// opencv实现并行循环的基类
 class LambdaBody : public cv::ParallelLoopBody {
 public:
   explicit LambdaBody(const std::function<void(const cv::Range &)> &body) { _body = body; }
+  // 继承ParallelLoopBody的派生类都需要实现这个函数，cv::Range表示要处理的索引范围
   void operator()(const cv::Range &range) const override { _body(range); }
 
 private:
-  std::function<void(const cv::Range &)> _body;
+  std::function<void(const cv::Range &)> _body; // 模板参数指定了它所存储的可调用对象的签名
 };
 
 } /* namespace ov_core */

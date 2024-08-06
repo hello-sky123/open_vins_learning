@@ -110,6 +110,7 @@ inline Eigen::Matrix<double, 4, 1> rot_2_quat(const Eigen::Matrix<double, 3, 3> 
     q(1) = (1 / (4 * q(3))) * (rot(2, 0) - rot(0, 2));
     q(2) = (1 / (4 * q(3))) * (rot(0, 1) - rot(1, 0));
   }
+  // 保证实部为正
   if (q(3) < 0) {
     q = -q;
   }
@@ -494,7 +495,7 @@ inline Eigen::Matrix<double, 4, 4> Omega(Eigen::Matrix<double, 3, 1> w) {
  * @return Normalized quaternion
  */
 inline Eigen::Matrix<double, 4, 1> quatnorm(Eigen::Matrix<double, 4, 1> q_t) {
-  // 四元数整体变为相反数时，标示的旋转是同一个，这里保证四元数的实部大于零
+  // 四元数整体变为相反数时，表示的旋转是同一个，这里保证四元数的实部大于零
   if (q_t(3, 0) < 0) {
     q_t *= -1;
   }
@@ -517,12 +518,12 @@ inline Eigen::Matrix<double, 3, 3> Jl_so3(const Eigen::Matrix<double, 3, 1> &w) 
   double theta = w.norm();
   if (theta < 1e-6) {
     return Eigen::MatrixXd::Identity(3, 3);
-  } else {
-    Eigen::Matrix<double, 3, 1> a = w / theta;
-    Eigen::Matrix<double, 3, 3> J = sin(theta) / theta * Eigen::MatrixXd::Identity(3, 3) + (1 - sin(theta) / theta) * a * a.transpose() +
-                                    ((1 - cos(theta)) / theta) * skew_x(a);
-    return J;
   }
+
+  Eigen::Matrix<double, 3, 1> a = w / theta;
+  Eigen::Matrix<double, 3, 3> J = sin(theta) / theta * Eigen::MatrixXd::Identity(3, 3) + (1 - sin(theta) / theta) * a * a.transpose() +
+                                  ((1 - cos(theta)) / theta) * skew_x(a);
+  return J;
 }
 
 /**

@@ -22,6 +22,8 @@
 #ifndef OV_TYPE_TYPE_IMU_H
 #define OV_TYPE_TYPE_IMU_H
 
+#include <memory>
+
 #include "PoseJPL.h"
 #include "utils/quat_ops.h"
 
@@ -34,16 +36,16 @@ namespace ov_type {
  * This should be similar to that of the standard MSCKF state besides the ordering.
  * The pose is first, followed by velocity, etc.
  */
-class IMU : public Type {
+class IMU: public Type {
 
 public:
-  IMU() : Type(15) {
+  IMU(): Type(15) {
 
     // Create all the sub-variables
-    _pose = std::shared_ptr<PoseJPL>(new PoseJPL());
-    _v = std::shared_ptr<Vec>(new Vec(3));
-    _bg = std::shared_ptr<Vec>(new Vec(3));
-    _ba = std::shared_ptr<Vec>(new Vec(3));
+    _pose = std::make_shared<PoseJPL>();
+    _v = std::make_shared<Vec>(3);
+    _bg = std::make_shared<Vec>(3);
+    _ba = std::make_shared<Vec>(3);
 
     // Set our default state value
     Eigen::VectorXd imu0 = Eigen::VectorXd::Zero(16, 1);
@@ -108,7 +110,7 @@ public:
   void set_fej(const Eigen::MatrixXd &new_value) override { set_fej_internal(new_value); }
 
   std::shared_ptr<Type> clone() override {
-    auto Clone = std::shared_ptr<Type>(new IMU());
+    auto Clone = std::make_shared<IMU>();
     Clone->set_value(value());
     Clone->set_fej(fej());
     return Clone;
@@ -169,10 +171,10 @@ public:
   std::shared_ptr<PoseJPL> pose() { return _pose; }
 
   /// Quaternion type access
-  std::shared_ptr<JPLQuat> q() { return _pose->q(); }
+  std::shared_ptr<JPLQuat> q() const { return _pose->q(); }
 
   /// Position type access
-  std::shared_ptr<Vec> p() { return _pose->p(); }
+  std::shared_ptr<Vec> p() const { return _pose->p(); }
 
   /// Velocity type access
   std::shared_ptr<Vec> v() { return _v; }

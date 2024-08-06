@@ -89,17 +89,18 @@ namespace ov_type {
  * \f}
  *
  */
-class JPLQuat : public Type {
+class JPLQuat: public Type {
 
 public:
-  JPLQuat() : Type(3) {
+  // 四元数的自由度为3
+  JPLQuat(): Type(3) {
     Eigen::Vector4d q0 = Eigen::Vector4d::Zero();
     q0(3) = 1.0;
     set_value_internal(q0);
     set_fej_internal(q0);
   }
 
-  ~JPLQuat() {}
+  ~JPLQuat() override = default;
 
   /**
    * @brief Implements update operation by left-multiplying the current
@@ -138,7 +139,7 @@ public:
 
   // Clone一个新的JPLQuat对象
   std::shared_ptr<Type> clone() override {
-    auto Clone = std::shared_ptr<JPLQuat>(new JPLQuat());
+    auto Clone = std::make_shared<JPLQuat>();
     Clone->set_value(value());
     Clone->set_fej(fej());
     return Clone;

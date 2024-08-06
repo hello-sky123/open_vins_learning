@@ -23,23 +23,25 @@
 
 using namespace ov_type;
 
+// Position of feature either in global or anchor frame
 Eigen::Matrix<double, 3, 1> Landmark::get_xyz(bool getfej) const {
 
   // CASE: Global 3d feature representation
   // CASE: Anchored 3D feature representation
   if (_feat_representation == LandmarkRepresentation::Representation::GLOBAL_3D ||
       _feat_representation == LandmarkRepresentation::Representation::ANCHORED_3D) {
-    return (getfej) ? fej() : value();
+    return getfej ? fej() : value();
   }
 
   // CASE: Global inverse depth feature representation
   // CASE: Anchored full inverse depth feature representation
   if (_feat_representation == LandmarkRepresentation::Representation::GLOBAL_FULL_INVERSE_DEPTH ||
       _feat_representation == LandmarkRepresentation::Representation::ANCHORED_FULL_INVERSE_DEPTH) {
-    Eigen::Matrix<double, 3, 1> p_invFinG = (getfej) ? fej() : value(); // [theta, phi, rho]
-    Eigen::Matrix<double, 3, 1> p_FinG;
-    p_FinG << (1 / p_invFinG(2)) * std::cos(p_invFinG(0)) * std::sin(p_invFinG(1)),
-        (1 / p_invFinG(2)) * std::sin(p_invFinG(0)) * std::sin(p_invFinG(1)), (1 / p_invFinG(2)) * std::cos(p_invFinG(1));
+    Eigen::Matrix<double, 3, 1> p_invFinG = getfej ? fej() : value(); // [theta, phi, rho]
+    Eigen::Matrix<double, 3, 1> p_FinG; // 1 / pho * [cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi)]
+    p_FinG << 1 / p_invFinG(2) * std::cos(p_invFinG(0)) * std::sin(p_invFinG(1)),
+              1 / p_invFinG(2) * std::sin(p_invFinG(0)) * std::sin(p_invFinG(1)),
+              1 / p_invFinG(2) * std::cos(p_invFinG(1));
     return p_FinG;
   }
 
@@ -47,13 +49,13 @@ Eigen::Matrix<double, 3, 1> Landmark::get_xyz(bool getfej) const {
   if (_feat_representation == LandmarkRepresentation::Representation::ANCHORED_MSCKF_INVERSE_DEPTH) {
     Eigen::Matrix<double, 3, 1> p_FinA;
     Eigen::Matrix<double, 3, 1> p_invFinA = value(); // msckf版本的逆深度表示比较简单，直接是[x/z, y/z, 1/z]
-    p_FinA << (1 / p_invFinA(2)) * p_invFinA(0), (1 / p_invFinA(2)) * p_invFinA(1), 1 / p_invFinA(2);
+    p_FinA << 1 / p_invFinA(2) * p_invFinA(0), 1 / p_invFinA(2) * p_invFinA(1), 1 / p_invFinA(2);
     return p_FinA;
   }
 
   // CASE: Estimate single depth of the feature using the initial bearing
   if (_feat_representation == LandmarkRepresentation::Representation::ANCHORED_INVERSE_DEPTH_SINGLE) {
-    // if(getfej) return 1.0/fej()(0)*uv_norm_zero_fej;
+    // if (getfej) return 1.0 / fej()(0) * uv_norm_zero_fej;
     return 1.0 / value()(0) * uv_norm_zero; // 如果是ANCHORED_INVERSE_DEPTH_SINGLE，那么value()为1/z
   }
 
@@ -85,7 +87,7 @@ void Landmark::set_from_xyz(Eigen::Matrix<double, 3, 1> p_FinG, bool isfej) {
     // NOTE: Thus we go from p_FinG and convert it to this form
     double g_rho = 1 / p_FinG.norm();
     double g_phi = std::acos(g_rho * p_FinG(2));
-    // double g_theta = std::asin(g_rho*p_FinG(1)/std::sin(g_phi));
+    // double g_theta = std::asin(g_rho*p_FinG(1) / std::sin(g_phi));
     double g_theta = std::atan2(p_FinG(1), p_FinG(0));
     Eigen::Matrix<double, 3, 1> p_invFinG;
     p_invFinG(0) = g_theta;
