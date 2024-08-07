@@ -88,7 +88,7 @@ namespace ov_core {
  *
  * To equate this to one of Kalibr's models, this is what you would use for `pinhole-equi`.
  */
-class CamEqui : public CamBase {
+class CamEqui: public CamBase {
 
 public:
   /**
@@ -96,7 +96,7 @@ public:
    * @param width Width of the camera (raw pixels)
    * @param height Height of the camera (raw pixels)
    */
-  CamEqui(int width, int height) : CamBase(width, height) {}
+  CamEqui(int width, int height): CamBase(width, height) {}
 
   ~CamEqui() {}
 
@@ -145,8 +145,8 @@ public:
                      cam_d(7) * std::pow(theta, 9);
 
     // Handle when r is small (meaning our xy is near the camera center)
-    double inv_r = (r > 1e-8) ? 1.0 / r : 1.0;
-    double cdist = (r > 1e-8) ? theta_d * inv_r : 1.0;
+    double inv_r = r > 1e-8 ? 1.0 / r : 1.0;
+    double cdist = r > 1e-8 ? theta_d * inv_r : 1.0;
 
     // Calculate distorted coordinates for fisheye
     Eigen::Vector2f uv_dist;
@@ -175,10 +175,10 @@ public:
                      cam_d(7) * std::pow(theta, 9);
 
     // Handle when r is small (meaning our xy is near the camera center)
-    double inv_r = (r > 1e-8) ? 1.0 / r : 1.0;
-    double cdist = (r > 1e-8) ? theta_d * inv_r : 1.0;
+    double inv_r = r > 1e-8 ? 1.0 / r : 1.0;
+    double cdist = r > 1e-8 ? theta_d * inv_r : 1.0;
 
-    // Jacobian of distorted pixel to "normalized" pixel
+    // Jacobian of distorted pixel to "normalized" pixel(x',y')
     Eigen::Matrix<double, 2, 2> duv_dxy = Eigen::Matrix<double, 2, 2>::Zero();
     duv_dxy << cam_d(0), 0, 0, cam_d(1);
 
@@ -206,7 +206,7 @@ public:
     double dth_dr = 1 / (r * r + 1);
 
     // Total Jacobian wrt normalized pixel coordinates
-    H_dz_dzn = Eigen::MatrixXd::Zero(2, 2);
+    H_dz_dzn = Eigen::MatrixXd::Zero(2, 2); // du/da = (du/dx' * dx'/da) + (du/dx' * dx'/dr * dr/da)+ (du/dx' * dx'/dthd * dthd/dth * dth/dr * dr/da)
     H_dz_dzn = duv_dxy * (dxy_dxyn + (dxy_dr + dxy_dthd * dthd_dth * dth_dr) * dr_dxyn);
 
     // Calculate distorted coordinates for fisheye
